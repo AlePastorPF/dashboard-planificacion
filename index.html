@@ -1,0 +1,415 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>SIC Plan Semanal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: club header, week tabs, summary row, three charts, then the editable week grid (fields x days) */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --surface-2:#f8fafb; --ink:#0f1214; --ink-2:#47525c; --muted:#76828d;
+  --line:#dde3e8; --line-2:#c9d1d8; --club:#1d8ad0; --club-ink:#0b5f99; --club-soft:#e3f1fb; --black:#121417;
+  --bar:#2a78d6; --bar-muted:#c4d3e4; --warn:#b5560f; --ok:#16794f;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1114; --surface:#151b20; --surface-2:#11161a; --ink:#eef2f5; --ink-2:#b3bdc6; --muted:#87939e;
+  --line:#253039; --line-2:#33404b; --club:#3aa4e6; --club-ink:#7cc4f2; --club-soft:#14324a; --black:#e9edf0;
+  --bar:#3987e5; --bar-muted:#2c3c4e; --warn:#e58a43; --ok:#3fbf86; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1114; --surface:#151b20; --surface-2:#11161a; --ink:#eef2f5; --ink-2:#b3bdc6; --muted:#87939e;
+  --line:#253039; --line-2:#33404b; --club:#3aa4e6; --club-ink:#7cc4f2; --club-soft:#14324a; --black:#e9edf0;
+  --bar:#3987e5; --bar-muted:#2c3c4e; --warn:#e58a43; --ok:#3fbf86; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
+.wrap{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:flex;flex-direction:column;gap:18px}
+header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.crest{width:56px;height:56px;border-radius:14px;background:#fff;display:grid;place-items:center;border:1px solid var(--line);flex:none}
+.crest img{width:46px;height:46px}
+.brand{display:flex;flex-direction:column;min-width:0}
+.brand h1{font-family:var(--display);font-weight:700;font-size:30px;line-height:1;letter-spacing:.01em;margin:0;text-transform:uppercase}
+.brand span{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+.status{margin-left:auto;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--line-2);display:inline-block}
+.status.saving i{background:var(--warn)} .status.saved i{background:var(--ok)} .status.err i{background:var(--warn)}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.tab{font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.03em;text-transform:uppercase;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);padding:6px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.tab:hover{border-color:var(--line-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--black);border-color:var(--black);color:var(--bg)}
+button{font:inherit}
+.btn{border:1px solid var(--line-2);background:var(--surface);color:var(--ink);padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500}
+.btn:hover{border-color:var(--club)}
+.btn.primary{background:var(--club);border-color:var(--club);color:#fff}
+.btn.danger{color:var(--warn)}
+:focus-visible{outline:2px solid var(--club);outline-offset:2px}
+.weekbar{display:flex;flex-wrap:wrap;gap:12px;align-items:end;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.fld input{height:38px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:8px;padding:7px 10px;font:inherit;min-width:0}
+.fld input:focus{border-color:var(--club);outline:none}
+#wkName{font-family:var(--display);font-weight:600;font-size:18px;text-transform:uppercase;width:180px}
+#wkDate{width:240px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi b{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums}
+.kpi b small{font-size:15px;color:var(--muted);font-weight:600;margin-left:3px}
+.kpi span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi em{font-style:normal;font-size:12px;color:var(--ink-2)}
+.charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 14px 8px;min-width:0;position:relative}
+.chart h2{font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:.03em;text-transform:uppercase;margin:0}
+.chart p{margin:0 0 6px;font-size:12px;color:var(--muted)}
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.chart svg text{fill:var(--muted);font-family:var(--body);font-size:10px}
+.chart svg .grid{stroke:var(--line);stroke-width:1}
+.chart svg .base{stroke:var(--line-2);stroke-width:1}
+.chart svg .hit{fill:transparent;cursor:default}
+.chart svg .val{fill:var(--ink-2);font-weight:600;font-size:10px}
+.tip{position:fixed;pointer-events:none;background:var(--black);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:6px;z-index:20;max-width:220px;line-height:1.35}
+.tip b{display:block;font-weight:600}
+.gridcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.gridhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 14px 10px;flex-wrap:wrap}
+.gridhead h2{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:.03em;text-transform:uppercase;margin:0}
+.gridhead p{margin:0;font-size:12px;color:var(--muted)}
+.scroller{overflow-x:auto;border-top:1px solid var(--line)}
+table.plan{border-collapse:separate;border-spacing:0;width:100%;min-width:1400px}
+table.plan th,table.plan td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;padding:0}
+table.plan thead th{background:var(--surface-2);padding:10px 10px 9px;text-align:left;position:relative}
+table.plan th.rowh{position:sticky;left:0;z-index:2;background:var(--surface-2);width:150px;min-width:150px;padding:9px 10px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);font-weight:600;text-align:left}
+table.plan th.rowh small{display:block;text-transform:none;letter-spacing:0;color:var(--muted);font-weight:400;font-size:11px}
+table.plan thead th.rowh{z-index:3}
+.dayname{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.04em;text-transform:uppercase}
+.daytipo{display:inline-block;margin-top:3px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;padding:2px 7px;border-radius:999px;background:var(--club-soft);color:var(--club-ink)}
+.daytipo.empty{background:transparent;color:var(--muted);padding-left:0}
+.daytipo.partido{background:var(--black);color:var(--bg)}
+.meter{position:absolute;left:0;right:0;bottom:0;height:3px;background:transparent}
+.meter i{display:block;height:100%;background:var(--club)}
+tr.sec th.rowh{border-top:2px solid var(--line-2)}
+tr.sec td{border-top:2px solid var(--line-2)}
+.cell{display:flex;flex-direction:column}
+.cell input{border:0;border-bottom:1px dashed transparent;background:transparent;color:var(--ink);font:inherit;font-size:13px;padding:6px 10px;width:100%;min-width:0}
+.cell input+input{border-top:1px dotted var(--line)}
+.cell input::placeholder{color:var(--muted);opacity:.55}
+.cell input:hover{background:var(--surface-2)}
+.cell input:focus{outline:none;background:var(--club-soft);box-shadow:inset 0 -2px 0 var(--club)}
+.cell input.num{font-variant-numeric:tabular-nums;font-weight:600}
+td.wkend{background:color-mix(in srgb,var(--surface-2) 60%,transparent)}
+.note{background:var(--surface);border:1px dashed var(--line-2);border-radius:12px;padding:18px;color:var(--ink-2)}
+.confirm{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--warn)}
+.empty-state{padding:40px 16px;text-align:center;color:var(--ink-2)}
+.empty-state h3{font-family:var(--display);font-size:22px;text-transform:uppercase;margin:0 0 6px;color:var(--ink)}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(6,minmax(0,1fr))}.kpi{grid-column:span 2}.kpi:nth-child(4),.kpi:nth-child(5){grid-column:span 3}.charts{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi{grid-column:auto}.kpis .kpi:last-child{grid-column:1/-1}.actions{margin-left:0}#wkName,#wkDate{width:100%}.weekbar .fld{flex:1 1 100%}.brand h1{font-size:25px}}
+@media (prefers-reduced-motion:no-preference){.meter i{transition:width .25s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="crest"><img alt="Escudo SIC" src="data:image/png;base64,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"></div>
+    <div class="brand"><h1>Plan semanal</h1><span>SIC · Preparación física y rugby</span></div>
+    <div class="status" id="status" role="status"><i></i><span>Conectando…</span></div>
+  </header>
+
+  <nav class="tabs" id="tabs" aria-label="Semanas"></nav>
+
+  <div id="main">
+    <div class="note">Cargando el plan…</div>
+  </div>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<datalist id="dl-tipo"></datalist><datalist id="dl-objetivos"></datalist><datalist id="dl-dimensiones"></datalist>
+<datalist id="dl-jugadores"></datalist><datalist id="dl-drills"></datalist><datalist id="dl-durDrills"></datalist>
+<datalist id="dl-metricas"></datalist><datalist id="dl-rasgo"></datalist><datalist id="dl-int"></datalist><datalist id="dl-vol"></datalist><datalist id="dl-dur"></datalist>
+
+<script>
+const GLOS = {"objetivos": ["Ataque - Aprendizaje", "Ataque - Desestructurado", "Ataque - Estructurado", "Ataque - Formaciones Fijas", "Ataque - Peor Escenario", "Ataque - Transicion", "Ataque - Otro", "Ataque sin Pelota - Aprendizaje", "Ataque sin Pelota - Desestructurado", "Ataque sin Pelota - Estructurado", "Ataque sin Pelota - Formaciones Fijas", "Ataque sin Pelota - Peor Escenario", "Ataque sin Pelota - Transicion", "Ataque sin Pelota - Otro", "Destrezas - Pase", "Destrezas - Evasion", "Destrezas - Individual por Puesto", "Destrezas - Patear y alcanzar", "Destrezas - Pie", "Destrezas - Postura", "Destrezas - Ruck", "Destrezas - Tackle", "Destrezas - Otro", "FFFF - Aprendizaje", "FFFF - Desestructurado", "FFFF - Estructurado", "FFFF - Peor Escenario", "FFFF - Otro", "Fisico - Aceleracion", "Fisico - Agilidad Reactiva", "Fisico - Aprendizaje", "Fisico - Carrera Lineal", "Fisico - Combate", "Fisico - Extras", "Fisico - Metabolico", "Fisico - Neuromuscular", "Fisico - Off Feet", "Fisico - Plyos", "Fisico - Recuperacion", "Fisico - RHIE/RSA", "Fisico - Trineo", "Fisico - Velocidad", "Fisico - Otro", "Primer Tiempo", "Rehab - Agilidad Reactiva", "Rehab - Carrera Lineal", "Rehab - Contacto", "Rehab - Metabolico", "Rehab - Neuromuscular", "Rehab - Plyos", "Rehab - RHIE", "Rehab - Sin Contacto", "Rehab - Tecnica", "Rehab - Trineo", "Rehab- Agilidad", "Rehab- Otro", "Segundo Tiempo", "Transicion - Aprendizaje", "Transicion - Desestructurado", "Transicion - Estructurado", "Transicion - Peor Escenario", "Transicion - Otro", "Otro - Otro", "Line Out - Aprendizaje", "Line Out - Desestructurado", "Line Out - Estructurado", "Line Out - Peor Escenario", "Line Out - Otro", "Scrum - Aprendizaje", "Scrum - Desestructurado", "Scrum - Estructurado", "Scrum - Peor Escenario", "Scrum - Otro", "Juego con el Pie - Aprendizaje", "Juego con el Pie - Desestructurado", "Juego con el Pie - Estructurado", "Juego con el Pie - Peor Escenario", "Juego con el Pie - Otro", "POTENCIA AEROBICA", "TESTEO", "DOMINATE", "LUCHA", "CIRCUITO", "SECUENCIAS DE JUEGO", "HURLING"], "tipo": ["ESTIMULACION", "APRENDIZAJE", "CONSOLIDACION", "REPASO", "MAXIMIZACION", "DESCARGA", "ALEATORIO", "TESTEO", "FISICO", "PARTIDO", "GIRA"], "dimensiones": ["SSG", "OFG", "10 X 10", "20 X 20", "30 X 30", "CANALES", "CIRCUITO", "MITAD DE CANCHA", "22 A 22", "CANCHA COMPLETA", "CANCHA INVERTIDA", "INDIVIDUAL", "Line Out - Aprendizaje", "Line Out - Desestructurado", "Line Out - Estructurado", "Line Out - Peor Escenario", "Line Out - Otro"], "jugadores": ["INDIVIDUAL", "PAREJAS", "TRIOS", "CUARTETOS", "QUINTETOS", "PACK", "BACKS", "EQUIPO", "ALEATORIO", "ALTERNADO"], "drills": ["SIN CONTACTO", "CON CONTACTO", "CONTACTO PROGRESIVO", "ESCUDOS", "TORTUGAS", "ALTERNADO", "HUESO HUESO", "MALCOM'S", "SHUTTLE", "BRONCO PARTIDO", "6 x 100", "7 x 100", "8 x 100", "9 x 100", "10 x 100", "BRONCO", "12X100", "6X300//6X200//6X100", "8X300//8X200//8X100", "10X300//10X200//10X100", "MEDICINE BALL", "TACKLE", "RUCK", "PASE", "TRACCION", "EMPUJE"], "durDrills": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "6 X 4' (30\"X30) X EST", "6 X 4\" (35\"X25\") X EST", "6 X 4' (40\"X20\") X EST"], "metricas": ["DISTANCIA TOTAL", "MTS/MIN", "HSR", "ACDC", "VELOCIDAD MAXIMA", "# ESFUERZOS", "WCS", "RHIE", "SEGUN BRONCO"], "rasgo": ["APRENDIZAJE", "FLUIDEZ", "CONCENTRACION", "AGRESIVIDAD", "DIVERSION", "REPASO", "ALEATORIO", "TENACIDAD"]};
+GLOS.int = ["1","2","3","4","5","6","7","8","9","10"];
+GLOS.vol = Array.from({length:19},(_,i)=>String(1000+i*500));
+GLOS.dur = Array.from({length:101},(_,i)=>String(20+i));
+for (const k in GLOS){const dl=document.getElementById("dl-"+k); if(dl) dl.innerHTML=GLOS[k].map(v=>`<option value="${esc(v)}"></option>`).join("");}
+
+const DAYS=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const DAYS_SHORT=["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
+const ROWS=[
+  {k:"tipo",label:"Tipo de sesión",list:"tipo"},
+  {k:"objetivos",label:"Objetivos",n:5,list:"objetivos"},
+  {k:"intensidad",label:"Intensidad",hint:"1 a 10",num:true,list:"int",sec:true},
+  {k:"duracion",label:"Duración",hint:"minutos",num:true,list:"dur"},
+  {k:"volumen",label:"Volumen",hint:"metros",num:true,list:"vol"},
+  {k:"partido",label:"Día de partido",sec:true},
+  {k:"cancha",label:"Cancha"},
+  {k:"dimensiones",label:"Dimensiones de driles",n:5,list:"dimensiones",sec:true},
+  {k:"jugadores",label:"Jugadores por dril",n:5,list:"jugadores"},
+  {k:"drills",label:"Tipo de dril",n:5,list:"drills"},
+  {k:"durDrills",label:"Duración de los driles",n:4,list:"durDrills"},
+  {k:"metricas",label:"Métricas",n:4,list:"metricas",sec:true},
+  {k:"rasgo",label:"Característica",list:"rasgo"},
+];
+function blankDay(){const d={};for(const r of ROWS)d[r.k]=r.n?Array(r.n).fill(""):"";return d;}
+function normDay(d){const o=blankDay();if(!d)return o;for(const r of ROWS){const v=d[r.k];if(r.n){const a=Array.isArray(v)?v.map(x=>x==null?"":String(x)):[];o[r.k]=Array.from({length:r.n},(_,i)=>a[i]??"");}else o[r.k]=v==null?"":v;}return o;}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+const num=v=>{const n=parseFloat(String(v).replace(",","."));return isFinite(n)?n:0;};
+const fmt=n=>Math.round(n).toLocaleString("es-AR");
+
+let weeks={};            // id -> {nombre, fecha, orden, dias[7]}
+let order=[];            // ids sorted
+let cur=null;
+let db=null, readOnly=false, loaded=false;
+const pending=new Map(); // id -> timer
+const inflight=new Set();
+let confirmDel=false;
+
+const $=s=>document.querySelector(s);
+const statusEl=$("#status");
+function setStatus(kind,text){statusEl.className="status "+kind;statusEl.querySelector("span").textContent=text;}
+
+// ---------- persistence ----------
+function scheduleSave(id){
+  if(!db||readOnly){return;}
+  clearTimeout(pending.get(id));
+  setStatus("saving","Guardando…");
+  pending.set(id,setTimeout(()=>flush(id),700));
+}
+async function flush(id){
+  if(inflight.has(id)){pending.set(id,setTimeout(()=>flush(id),300));return;}
+  pending.delete(id);
+  const w=weeks[id]; if(!w) return;
+  inflight.add(id);
+  try{
+    await db.doc("semanas/"+id).set({nombre:w.nombre,fecha:w.fecha,orden:w.orden,dias:w.dias});
+    if(!pending.size&&inflight.size===1) setStatus("saved","Guardado");
+  }catch(e){
+    if(e&&e.code==="invalid_argument"){readOnly=true;setStatus("err","Solo lectura: no tenés permiso para editar");render();}
+    else if(e&&e.code==="unavailable"){setTimeout(()=>scheduleSave(id),1500);}
+    else setStatus("err","No se pudo guardar ("+(e&&e.code||"error")+")");
+  }finally{inflight.delete(id);}
+}
+async function removeWeek(id){
+  delete weeks[id]; order=order.filter(x=>x!==id); cur=order[0]||null;
+  clearTimeout(pending.get(id)); pending.delete(id);
+  render();
+  if(db&&!readOnly){try{await db.doc("semanas/"+id).delete();setStatus("saved","Semana eliminada");}catch(e){setStatus("err","No se pudo eliminar");}}
+}
+
+// ---------- rendering ----------
+function render(){
+  renderTabs();
+  const main=$("#main");
+  if(!loaded){main.innerHTML=`<div class="note">Cargando el plan…</div>`;return;}
+  if(!cur||!weeks[cur]){
+    main.innerHTML=`<div class="note empty-state"><h3>Todavía no hay semanas</h3><p>Creá la primera semana y completá el plan escribiendo en cada casilla.</p>${readOnly?"":`<p><button class="btn primary" id="firstWeek">Crear semana</button></p>`}</div>`;
+    const b=$("#firstWeek"); if(b) b.onclick=()=>addWeek(false);
+    return;
+  }
+  const w=weeks[cur];
+  main.innerHTML=`
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <section class="weekbar">
+      <div class="fld"><label for="wkName">Semana</label><input id="wkName" value="${esc(w.nombre)}" ${readOnly?"readonly":""}></div>
+      <div class="fld"><label for="wkDate">Fechas</label><input id="wkDate" value="${esc(w.fecha)}" placeholder="dd/mm/aaaa a dd/mm/aaaa" ${readOnly?"readonly":""}></div>
+      <div class="actions" id="actions"></div>
+    </section>
+    <section class="kpis" id="kpis"></section>
+    <section class="charts">
+      <div class="chart"><h2>Intensidad por día</h2><p>Escala 1 a 10</p><svg id="chInt" viewBox="0 0 320 170" role="img" aria-label="Intensidad por día"></svg></div>
+      <div class="chart"><h2>Volumen por día</h2><p>Metros planificados</p><svg id="chVol" viewBox="0 0 320 170" role="img" aria-label="Volumen por día"></svg></div>
+      <div class="chart"><h2>Carga por semana</h2><p>Suma de intensidad × minutos</p><svg id="chLoad" viewBox="0 0 320 170" role="img" aria-label="Carga por semana"></svg></div>
+    </section>
+    <section class="gridcard">
+      <div class="gridhead"><h2>Planilla de la semana</h2><p>${readOnly?"Vista de solo lectura.":"Escribí en cualquier casilla. Las sugerencias salen del glosario, pero podés poner lo que quieras. Se guarda solo."}</p></div>
+      <div class="scroller"><table class="plan" id="plan"></table></div>
+    </section>
+  </div>`;
+  renderActions();
+  $("#wkName").oninput=e=>{w.nombre=e.target.value;renderTabs();scheduleSave(cur);};
+  $("#wkDate").oninput=e=>{w.fecha=e.target.value;w.dias.forEach((d,i)=>{const h=$("#dh-"+i);if(h)h.innerHTML=dayHead(d,i);});scheduleSave(cur);};
+  renderTable();
+  renderSummary();
+}
+function renderTabs(){
+  const t=$("#tabs");
+  t.innerHTML=order.map(id=>`<button class="tab" role="tab" aria-selected="${id===cur}" data-id="${id}">${esc(weeks[id].nombre||"Sin nombre")}</button>`).join("");
+  t.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{cur=b.dataset.id;confirmDel=false;render();});
+}
+function renderActions(){
+  const a=$("#actions"); if(!a) return;
+  if(readOnly){a.innerHTML="";return;}
+  if(confirmDel){
+    a.innerHTML=`<span class="confirm">¿Eliminar ${esc(weeks[cur].nombre)}? <button class="btn danger" id="yesDel">Eliminar</button><button class="btn" id="noDel">Cancelar</button></span>`;
+    $("#yesDel").onclick=()=>{confirmDel=false;removeWeek(cur);};
+    $("#noDel").onclick=()=>{confirmDel=false;renderActions();};
+  }else{
+    a.innerHTML=`<button class="btn primary" id="dupWeek">Duplicar semana</button><button class="btn" id="newWeek">Semana vacía</button><button class="btn danger" id="delWeek">Eliminar</button>`;
+    $("#dupWeek").onclick=()=>addWeek(true);
+    $("#newWeek").onclick=()=>addWeek(false);
+    $("#delWeek").onclick=()=>{confirmDel=true;renderActions();};
+  }
+}
+function addWeek(copy){
+  const id="s"+Date.now().toString(36);
+  const maxO=order.reduce((m,x)=>Math.max(m,weeks[x].orden||0),0);
+  const src=copy&&cur&&weeks[cur];
+  const lastId=order.reduce((b,x)=>!b||(weeks[x].orden||0)>(weeks[b].orden||0)?x:b,null);
+  const ls=lastId&&weekStart(weeks[lastId].fecha);
+  const st=ls?new Date(ls.getFullYear(),ls.getMonth(),ls.getDate()+7):new Date(2027,1,1);
+  weeks[id]={nombre:"SEMANA "+(order.length+1),fecha:rangeFrom(st),orden:maxO+1,dias:src?JSON.parse(JSON.stringify(src.dias)):Array.from({length:7},blankDay)};
+  order.push(id); cur=id; render(); scheduleSave(id);
+  setTimeout(()=>{const n=$("#wkName");if(n){n.focus();n.select();}},0);
+}
+
+function parseD(s){const m=String(s||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
+function weekStart(f){return parseD(f);}
+const dd=d=>String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+function rangeFrom(st){const en=new Date(st.getFullYear(),st.getMonth(),st.getDate()+6);return dd(st)+" a "+dd(en);}
+function dayDate(i){const s=weekStart(weeks[cur]&&weeks[cur].fecha);if(!s)return"";const d=new Date(s.getFullYear(),s.getMonth(),s.getDate()+i);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0");}
+function visibleCount(arr,n){let last=-1;arr.forEach((v,i)=>{if(String(v).trim()!=="")last=i;});return Math.min(n,Math.max(1,last+2));}
+function cellHTML(r,di,val){
+  const ro=readOnly?"readonly":"";
+  const dl=r.list?`list="dl-${r.list}"`:"";
+  if(r.n){
+    const c=visibleCount(val,r.n);
+    let h="";
+    for(let i=0;i<c;i++) h+=`<input id="c-${r.k}-${di}-${i}" data-k="${r.k}" data-d="${di}" data-i="${i}" ${dl} value="${esc(val[i])}" placeholder="${i===0?"—":"+ agregar"}" autocomplete="off" ${ro} aria-label="${r.label} ${DAYS[di]} ${i+1}">`;
+    return `<div class="cell">${h}</div>`;
+  }
+  return `<div class="cell"><input id="c-${r.k}-${di}" class="${r.num?"num":""}" data-k="${r.k}" data-d="${di}" ${dl} ${r.num?'inputmode="decimal"':""} value="${esc(val)}" placeholder="—" autocomplete="off" ${ro} aria-label="${r.label} ${DAYS[di]}"></div>`;
+}
+function renderTable(){
+  const w=weeks[cur]; const t=$("#plan");
+  let h=`<thead><tr><th class="rowh">Día</th>`;
+  w.dias.forEach((d,i)=>{h+=`<th id="dh-${i}">${dayHead(d,i)}</th>`;});
+  h+=`</tr></thead><tbody>`;
+  for(const r of ROWS){
+    h+=`<tr class="${r.sec?"sec":""}"><th class="rowh" scope="row">${r.label}${r.hint?`<small>${r.hint}</small>`:""}</th>`;
+    w.dias.forEach((d,i)=>{h+=`<td class="${i>=5?"wkend":""}" id="td-${r.k}-${i}">${cellHTML(r,i,d[r.k])}</td>`;});
+    h+=`</tr>`;
+  }
+  t.innerHTML=h+`</tbody>`;
+  t.oninput=onCellInput;
+}
+function dayHead(d,i){
+  const tipo=String(d.tipo||"").trim();
+  const cls=!tipo?"empty":(/PARTIDO/i.test(tipo)?"partido":"");
+  const inten=Math.max(0,Math.min(10,num(d.intensidad)));
+  const dt=dayDate(i);
+  return `<div class="dayname">${DAYS[i]}${dt?` <small style="font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0">${dt}</small>`:""}</div><span class="daytipo ${cls}">${tipo?esc(tipo):"Sin sesión"}</span><div class="meter" title="Intensidad ${inten||"–"}"><i style="width:${inten*10}%"></i></div>`;
+}
+function onCellInput(e){
+  const el=e.target; if(!el.dataset||!el.dataset.k) return;
+  const k=el.dataset.k, di=+el.dataset.d; const r=ROWS.find(x=>x.k===k);
+  const day=weeks[cur].dias[di];
+  let v=el.value;
+  if(r.n){
+    const i=+el.dataset.i; day[k][i]=v;
+    // grow a new empty slot when the last visible one gets text
+    const cell=el.parentElement; const shown=cell.querySelectorAll("input").length;
+    if(i===shown-1&&v.trim()!==""&&shown<r.n){
+      const tmp=document.createElement("div");tmp.innerHTML=cellHTML(r,di,day[k]);
+      const extra=tmp.querySelector(".cell").lastElementChild; cell.appendChild(extra);
+    }
+  }else{
+    if(r.num){const t=v.trim(); day[k]=t===""?"":(isFinite(+t.replace(",","."))?+t.replace(",","."):t);}
+    else day[k]=v;
+  }
+  if(k==="tipo"||k==="intensidad"){$("#dh-"+di).innerHTML=dayHead(day,di);}
+  if(r.num||k==="tipo") renderSummary();
+  scheduleSave(cur);
+}
+
+// ---------- summary + charts ----------
+function weekStats(w){
+  let ses=0,intSum=0,intN=0,min=0,vol=0,load=0,descanso=0;
+  w.dias.forEach(d=>{
+    const has=String(d.tipo||"").trim()!==""||num(d.intensidad)>0;
+    if(has) ses++; else descanso++;
+    const i=num(d.intensidad), m=num(d.duracion);
+    if(i>0){intSum+=i;intN++;}
+    min+=m; vol+=num(d.volumen); load+=i*m;
+  });
+  return {ses,descanso,intAvg:intN?intSum/intN:0,min,vol,load};
+}
+function renderSummary(){
+  const w=weeks[cur]; if(!w) return;
+  const s=weekStats(w);
+  const idx=order.indexOf(cur); const prev=idx>0?weekStats(weeks[order[idx-1]]):null;
+  const delta=(a,b)=>{if(!prev||!b)return"";const p=Math.round((a-b)/b*100);return `${p>0?"+":""}${p}% vs. semana anterior`;};
+  $("#kpis").innerHTML=`
+    <div class="kpi"><span>Sesiones</span><b>${s.ses}<small>/ 7</small></b><em>${s.descanso} día${s.descanso===1?"":"s"} libre${s.descanso===1?"":"s"}</em></div>
+    <div class="kpi"><span>Intensidad media</span><b>${s.intAvg?s.intAvg.toFixed(1):"–"}<small>/ 10</small></b><em>&nbsp;</em></div>
+    <div class="kpi"><span>Minutos totales</span><b>${fmt(s.min)}<small>min</small></b><em>${delta(s.min,prev&&prev.min)||"&nbsp;"}</em></div>
+    <div class="kpi"><span>Volumen total</span><b>${fmt(s.vol)}<small>m</small></b><em>${delta(s.vol,prev&&prev.vol)||"&nbsp;"}</em></div>
+    <div class="kpi"><span>Carga semanal</span><b>${fmt(s.load)}<small>UA</small></b><em>${delta(s.load,prev&&prev.load)||"&nbsp;"}</em></div>`;
+  barChart($("#chInt"),w.dias.map((d,i)=>({label:DAYS_SHORT[i],value:num(d.intensidad),tip:`<b>${DAYS[i]}</b>${esc(d.tipo||"Sin sesión")} · intensidad ${num(d.intensidad)||"–"}`})),{max:10,ticks:[0,5,10]});
+  barChart($("#chVol"),w.dias.map((d,i)=>({label:DAYS_SHORT[i],value:num(d.volumen),tip:`<b>${DAYS[i]}</b>${fmt(num(d.volumen))} m · ${fmt(num(d.duracion))} min`})),{});
+  barChart($("#chLoad"),order.map(id=>{const st=weekStats(weeks[id]);return {label:shortName(weeks[id].nombre),value:st.load,muted:id!==cur,tip:`<b>${esc(weeks[id].nombre)}</b>${esc(weeks[id].fecha||"")}<br>Carga ${fmt(st.load)} UA · ${fmt(st.min)} min`};}),{});
+}
+function shortName(n){const m=String(n||"").match(/(\d+)/);return m?"S"+m[1]:String(n||"?").slice(0,4);}
+function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;}
+function barChart(svg,data,opt){
+  const W=320,H=170,L=34,R=6,T=14,B=22; const iw=W-L-R, ih=H-T-B;
+  const max=opt.max||niceMax(Math.max(0,...data.map(d=>d.value)));
+  const ticks=opt.ticks||[0,max/2,max];
+  const n=Math.max(1,data.length); const slot=iw/n; const bw=Math.min(28,slot*0.62);
+  let h="";
+  ticks.forEach(t=>{const y=T+ih-(t/max)*ih;h+=`<line class="${t===0?"base":"grid"}" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+3}" text-anchor="end">${t>=1000?fmt(t/1000)+"k":fmt(t)}</text>`;});
+  const top=data.reduce((m,d)=>Math.max(m,d.value),0);
+  data.forEach((d,i)=>{
+    const x=L+slot*i+(slot-bw)/2; const bh=(Math.min(d.value,max)/max)*ih; const y=T+ih-bh;
+    if(bh>0){const r=Math.min(4,bh,bw/2);
+      h+=`<path d="M${x},${T+ih} V${y+r} Q${x},${y} ${x+r},${y} H${x+bw-r} Q${x+bw},${y} ${x+bw},${y+r} V${T+ih} Z" fill="var(${d.muted?"--bar-muted":"--bar"})"/>`;}
+    if(d.value>0&&(!d.muted)&&(data.length<=7||d.value===top)) h+=`<text class="val" x="${x+bw/2}" y="${y-4}" text-anchor="middle">${d.value>=10000?fmt(d.value/1000)+"k":fmt(d.value)}</text>`;
+    h+=`<text x="${x+bw/2}" y="${H-6}" text-anchor="middle">${esc(d.label)}</text>`;
+    h+=`<rect class="hit" x="${L+slot*i}" y="${T}" width="${slot}" height="${ih+B}" data-tip="${esc(d.tip)}"/>`;
+  });
+  svg.innerHTML=h;
+}
+const tip=$("#tip");
+document.addEventListener("pointermove",e=>{
+  const t=e.target.closest&&e.target.closest("[data-tip]");
+  if(!t){tip.hidden=true;return;}
+  tip.innerHTML=t.getAttribute("data-tip");tip.hidden=false;
+  const r=tip.getBoundingClientRect();
+  let x=e.clientX+12, y=e.clientY-r.height-10;
+  if(x+r.width>innerWidth-8)x=e.clientX-r.width-12; if(y<8)y=e.clientY+14;
+  tip.style.left=x+"px";tip.style.top=y+"px";
+});
+
+// ---------- boot ----------
+render();
+(async()=>{
+  let timer=setTimeout(()=>{if(!loaded){setStatus("err","No se puede conectar con los datos todavía");}},10000);
+  try{ db = window.claude&&window.claude.use ? await window.claude.use("db") : null; }catch(e){db=null;}
+  if(!db){
+    clearTimeout(timer); loaded=true; readOnly=false;
+    setStatus("err","Sin conexión a los datos: los cambios de esta vista no se guardan");
+    render(); return;
+  }
+  try{const u=await window.claude.use("user"); if(u&&u.can){const c=await u.can("data.write"); if(c===false){readOnly=true;}}}catch(e){}
+  db.collection("semanas").orderBy("orden").onSnapshot(snap=>{
+    const active=document.activeElement; const typing=active&&active.closest&&active.closest("#main")&&active.tagName==="INPUT";
+    let curChanged=false;
+    const next={}; const nextOrder=[];
+    snap.docs.forEach(doc=>{
+      const id=doc.id; nextOrder.push(id);
+      if(pending.has(id)||inflight.has(id)){next[id]=weeks[id]||normWeek(doc.data());return;}
+      const nw=normWeek(doc.data());
+      if(id===cur&&JSON.stringify(nw)!==JSON.stringify(weeks[id]))curChanged=true;
+      next[id]=nw;
+    });
+    // keep locally-created weeks not yet confirmed
+    for(const id of order){if(!next[id]&&(pending.has(id)||inflight.has(id))){next[id]=weeks[id];nextOrder.push(id);}}
+    weeks=next; order=nextOrder;
+    const wasLoaded=loaded;
+    if(!snap.metadata.fromCache){clearTimeout(timer);loaded=true;if(!pending.size&&!inflight.size)setStatus(readOnly?"":"saved",readOnly?"Solo lectura":"Al día");}
+    else if(order.length) loaded=true;
+    if(!cur||!weeks[cur]) {cur=order[order.length-1]||null; curChanged=true;}
+    if(!wasLoaded||curChanged){ if(typing&&wasLoaded) renderTabs(); else render(); }
+    else { renderTabs(); renderSummary(); }
+  },err=>{clearTimeout(timer);loaded=true;setStatus("err","No se pudieron leer los datos ("+err.code+")");render();});
+})();
+function normWeek(d){d=d||{};return {nombre:String(d.nombre??""),fecha:String(d.fecha??""),orden:+d.orden||0,dias:Array.from({length:7},(_,i)=>normDay(Array.isArray(d.dias)?d.dias[i]:null))};}
+</script>
+
+</body></html>
