@@ -1,4 +1,8 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>SIC Plan Semanal</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -103,6 +107,10 @@ td.wkend{background:color-mix(in srgb,var(--surface-2) 60%,transparent)}
 @media (max-width:520px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi{grid-column:auto}.kpis .kpi:last-child{grid-column:1/-1}.actions{margin-left:0}#wkName,#wkDate{width:100%}.weekbar .fld{flex:1 1 100%}.brand h1{font-size:25px}}
 @media (prefers-reduced-motion:no-preference){.meter i{transition:width .25s}}
 </style>
+<style>body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+
 
 <div class="wrap">
   <header class="top">
@@ -165,32 +173,38 @@ const $=s=>document.querySelector(s);
 const statusEl=$("#status");
 function setStatus(kind,text){statusEl.className="status "+kind;statusEl.querySelector("span").textContent=text;}
 
-// ---------- persistence ----------
+// ---------- persistence (Google Sheets vía Apps Script) ----------
+// Pegá entre las comillas la URL de la "aplicación web" de Apps Script (termina en /exec).
+const API_URL = "https://script.google.com/macros/s/AKfycbzP0tDf93c2gOiutm3OIjBx-Ti3x6GHFUdd7ISXn4_lfrZo8LefOA55g9rRwfOHP3M/exec";
+const apiOk = /^https:\/\/script\.google(usercontent)?\.com\//.test(API_URL);
+async function api(body){
+  const r = await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)});
+  const j = await r.json(); if(!j.ok) throw new Error(j.error||"error"); return j;
+}
 function scheduleSave(id){
   if(!db||readOnly){return;}
   clearTimeout(pending.get(id));
   setStatus("saving","Guardando…");
-  pending.set(id,setTimeout(()=>flush(id),700));
+  pending.set(id,setTimeout(()=>flush(id),900));
 }
 async function flush(id){
-  if(inflight.has(id)){pending.set(id,setTimeout(()=>flush(id),300));return;}
+  if(inflight.has(id)){pending.set(id,setTimeout(()=>flush(id),400));return;}
   pending.delete(id);
   const w=weeks[id]; if(!w) return;
   inflight.add(id);
   try{
-    await db.doc("semanas/"+id).set({nombre:w.nombre,fecha:w.fecha,orden:w.orden,dias:w.dias});
-    if(!pending.size&&inflight.size===1) setStatus("saved","Guardado");
+    await api({action:"save",id,semana:{nombre:w.nombre,fecha:w.fecha,orden:w.orden,dias:w.dias}});
+    if(!pending.size&&inflight.size===1) setStatus("saved","Guardado en Google Sheets");
   }catch(e){
-    if(e&&e.code==="invalid_argument"){readOnly=true;setStatus("err","Solo lectura: no tenés permiso para editar");render();}
-    else if(e&&e.code==="unavailable"){setTimeout(()=>scheduleSave(id),1500);}
-    else setStatus("err","No se pudo guardar ("+(e&&e.code||"error")+")");
+    setStatus("err","No se pudo guardar. Reintentando…");
+    setTimeout(()=>scheduleSave(id),4000);
   }finally{inflight.delete(id);}
 }
 async function removeWeek(id){
   delete weeks[id]; order=order.filter(x=>x!==id); cur=order[0]||null;
   clearTimeout(pending.get(id)); pending.delete(id);
   render();
-  if(db&&!readOnly){try{await db.doc("semanas/"+id).delete();setStatus("saved","Semana eliminada");}catch(e){setStatus("err","No se pudo eliminar");}}
+  if(db&&!readOnly){try{await api({action:"delete",id});setStatus("saved","Semana eliminada");}catch(e){setStatus("err","No se pudo eliminar");}}
 }
 
 // ---------- rendering ----------
@@ -378,38 +392,43 @@ document.addEventListener("pointermove",e=>{
 
 // ---------- boot ----------
 render();
+function applyRemote(list){
+  const active=document.activeElement; const typing=active&&active.closest&&active.closest("#main")&&active.tagName==="INPUT";
+  let curChanged=false; const next={}; const nextOrder=[];
+  list.sort((x,y)=>(+x.orden||0)-(+y.orden||0)).forEach(raw=>{
+    const id=String(raw.id); nextOrder.push(id);
+    if(pending.has(id)||inflight.has(id)){next[id]=weeks[id]||normWeek(raw);return;}
+    const nw=normWeek(raw);
+    if(id===cur&&JSON.stringify(nw)!==JSON.stringify(weeks[id]))curChanged=true;
+    next[id]=nw;
+  });
+  for(const id of order){if(!next[id]&&(pending.has(id)||inflight.has(id))){next[id]=weeks[id];nextOrder.push(id);}}
+  weeks=next; order=nextOrder;
+  const wasLoaded=loaded; loaded=true;
+  if(!cur||!weeks[cur]){cur=order[order.length-1]||null;curChanged=true;}
+  if(!wasLoaded||curChanged){ if(typing&&wasLoaded) renderTabs(); else render(); }
+  else { renderTabs(); renderSummary(); }
+}
+async function pull(){
+  try{
+    const r=await fetch(API_URL+(API_URL.includes("?")?"&":"?")+"t="+Date.now());
+    const j=await r.json(); if(!j.ok) throw new Error(j.error);
+    applyRemote(j.semanas||[]);
+    if(!pending.size&&!inflight.size) setStatus("saved","Al día");
+  }catch(e){ if(!loaded){loaded=true;render();} setStatus("err","No se pudo leer la planilla"); }
+}
 (async()=>{
-  let timer=setTimeout(()=>{if(!loaded){setStatus("err","No se puede conectar con los datos todavía");}},10000);
-  try{ db = window.claude&&window.claude.use ? await window.claude.use("db") : null; }catch(e){db=null;}
-  if(!db){
-    clearTimeout(timer); loaded=true; readOnly=false;
-    setStatus("err","Sin conexión a los datos: los cambios de esta vista no se guardan");
+  if(!apiOk){
+    db=null; loaded=true;
+    setStatus("err","Falta conectar la planilla: los cambios no se guardan");
     render(); return;
   }
-  try{const u=await window.claude.use("user"); if(u&&u.can){const c=await u.can("data.write"); if(c===false){readOnly=true;}}}catch(e){}
-  db.collection("semanas").orderBy("orden").onSnapshot(snap=>{
-    const active=document.activeElement; const typing=active&&active.closest&&active.closest("#main")&&active.tagName==="INPUT";
-    let curChanged=false;
-    const next={}; const nextOrder=[];
-    snap.docs.forEach(doc=>{
-      const id=doc.id; nextOrder.push(id);
-      if(pending.has(id)||inflight.has(id)){next[id]=weeks[id]||normWeek(doc.data());return;}
-      const nw=normWeek(doc.data());
-      if(id===cur&&JSON.stringify(nw)!==JSON.stringify(weeks[id]))curChanged=true;
-      next[id]=nw;
-    });
-    // keep locally-created weeks not yet confirmed
-    for(const id of order){if(!next[id]&&(pending.has(id)||inflight.has(id))){next[id]=weeks[id];nextOrder.push(id);}}
-    weeks=next; order=nextOrder;
-    const wasLoaded=loaded;
-    if(!snap.metadata.fromCache){clearTimeout(timer);loaded=true;if(!pending.size&&!inflight.size)setStatus(readOnly?"":"saved",readOnly?"Solo lectura":"Al día");}
-    else if(order.length) loaded=true;
-    if(!cur||!weeks[cur]) {cur=order[order.length-1]||null; curChanged=true;}
-    if(!wasLoaded||curChanged){ if(typing&&wasLoaded) renderTabs(); else render(); }
-    else { renderTabs(); renderSummary(); }
-  },err=>{clearTimeout(timer);loaded=true;setStatus("err","No se pudieron leer los datos ("+err.code+")");render();});
+  db=true;
+  await pull();
+  setInterval(()=>{ if(document.visibilityState==="visible" && !pending.size && !inflight.size) pull(); },20000);
 })();
 function normWeek(d){d=d||{};return {nombre:String(d.nombre??""),fecha:String(d.fecha??""),orden:+d.orden||0,dias:Array.from({length:7},(_,i)=>normDay(Array.isArray(d.dias)?d.dias[i]:null))};}
 </script>
 
-</body></html>
+</body>
+</html>
