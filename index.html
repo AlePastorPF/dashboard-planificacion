@@ -130,6 +130,7 @@ td.wkend{background:color-mix(in srgb,var(--surface-2) 60%,transparent)}
   <div id="main">
     <div class="note">Cargando el plan…</div>
   </div>
+  <p id="glosInfo" style="margin:0;font-size:12px;color:var(--muted)">Versión de la página: 4 · Glosario: fijo (todavía no se leyó de la planilla)</p>
 </div>
 <div class="tip" id="tip" hidden></div>
 
@@ -145,8 +146,10 @@ GLOS.dur = Array.from({length:101},(_,i)=>String(20+i));
 function fillLists(){for (const k in GLOS){const dl=document.getElementById("dl-"+k); if(dl) dl.innerHTML=GLOS[k].map(v=>`<option value="${esc(v)}"></option>`).join("");}}
 fillLists();
 let glosKey="";
+function glosInfo(txt,warn){const el=document.getElementById("glosInfo");if(el){el.textContent="Versión de la página: 4 · Glosario: "+txt;el.style.color=warn?"var(--warn)":"var(--muted)";}}
 function applyGlosario(g){
-  if(!g||typeof g!=="object")return;
+  if(!g||typeof g!=="object"){glosInfo("fijo. El script de Google no está enviando el Glosario: falta pegar el Codigo.gs nuevo y hacer Nueva versión en la implementación.",true);return;}
+  glosInfo("desde la planilla, leído a las "+new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})+" ("+Object.keys(g).length+" listas)");
   const k=JSON.stringify(g); if(k===glosKey)return; glosKey=k;
   for(const key in g){ if(Array.isArray(g[key])&&g[key].length) GLOS[key]=g[key].map(String); }
   fillLists();
