@@ -196,7 +196,7 @@ function setStatus(kind,text){statusEl.className="status "+kind;statusEl.querySe
 
 // ---------- persistence (Google Sheets vía Apps Script) ----------
 // Pegá entre las comillas la URL de la "aplicación web" de Apps Script (termina en /exec).
-const API_URL = "https://script.google.com/macros/s/AKfycbzP0tDf93c2gOiutm3OIjBx-Ti3x6GHFUdd7ISXn4_lfrZo8LefOA55g9rRwfOHP3M/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwn5c7J8bFx7fcQgV67ivZqt8ddTu-idJxxKdP8Jalniuxto7wflC3yGZ22uhf5V7o/exec";
 const apiOk = /^https:\/\/script\.google(usercontent)?\.com\//.test(API_URL);
 async function api(body){
   const r = await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)});
