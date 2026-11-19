@@ -142,7 +142,15 @@ const GLOS = {"objetivos": ["Ataque - Aprendizaje", "Ataque - Desestructurado", 
 GLOS.int = ["1","2","3","4","5","6","7","8","9","10"];
 GLOS.vol = Array.from({length:19},(_,i)=>String(1000+i*500));
 GLOS.dur = Array.from({length:101},(_,i)=>String(20+i));
-for (const k in GLOS){const dl=document.getElementById("dl-"+k); if(dl) dl.innerHTML=GLOS[k].map(v=>`<option value="${esc(v)}"></option>`).join("");}
+function fillLists(){for (const k in GLOS){const dl=document.getElementById("dl-"+k); if(dl) dl.innerHTML=GLOS[k].map(v=>`<option value="${esc(v)}"></option>`).join("");}}
+fillLists();
+let glosKey="";
+function applyGlosario(g){
+  if(!g||typeof g!=="object")return;
+  const k=JSON.stringify(g); if(k===glosKey)return; glosKey=k;
+  for(const key in g){ if(Array.isArray(g[key])&&g[key].length) GLOS[key]=g[key].map(String); }
+  fillLists();
+}
 
 const DAYS=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 const DAYS_SHORT=["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
@@ -419,6 +427,7 @@ async function pull(){
   try{
     const r=await fetch(API_URL+(API_URL.includes("?")?"&":"?")+"t="+Date.now());
     const j=await r.json(); if(!j.ok) throw new Error(j.error);
+    applyGlosario(j.glosario);
     applyRemote(j.semanas||[]);
     if(!pending.size&&!inflight.size) setStatus("saved","Al día");
   }catch(e){ if(!loaded){loaded=true;render();} setStatus("err","No se pudo leer la planilla"); }
