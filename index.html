@@ -210,6 +210,16 @@ td.wtot small{color:var(--muted);font-size:11px}
 .copybox{width:100%;min-height:160px;font:12px ui-monospace,monospace;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);padding:8px}
 @media (max-width:900px){.summary,.expgrid{grid-template-columns:minmax(0,1fr)}.catgrid{grid-template-columns:minmax(0,1fr)}.catnav{flex-direction:row;flex-wrap:wrap}.catnav button{flex:1 1 auto}}
 @media (max-width:640px){.views button{flex:1 1 0;min-width:0;font-size:13.5px;padding:8px 2px;letter-spacing:.02em}.daypick{grid-template-columns:repeat(4,minmax(0,1fr))}.mesbar h2{min-width:0;flex:1}.mesk{margin-left:0;width:100%}}
+table.ses td.tm{width:92px;padding:0 0 0 4px;white-space:nowrap}
+table.ses input.hora{width:58px;min-width:58px;padding:9px 4px;font-weight:600;color:var(--club-ink);font-variant-numeric:tabular-nums}
+table.ses input.hora.manual{color:var(--ink);background:var(--club-soft);border-radius:6px}
+table.ses .reset{border:0;background:none;color:var(--muted);cursor:pointer;padding:2px 3px;font-size:13px}
+table.ses .reset:hover{color:var(--club-ink)}
+table.ses .partag{display:none}
+table.ses tr.par td{background:color-mix(in srgb,var(--club-soft) 55%,transparent)}
+table.ses tr.par td.n{position:relative;padding-top:2px}
+table.ses tr.par .partag{display:block;font-size:8.5px;line-height:1;letter-spacing:.04em;text-transform:uppercase;color:var(--club-ink);font-weight:700;margin-top:2px}
+table.ses td.n{width:52px}
 </style>
 <style>body{margin:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
 </head>
@@ -234,7 +244,7 @@ td.wtot small{color:var(--muted);font-size:11px}
   <div id="main">
     <div class="note">Cargando el plan…</div>
   </div>
-  <p id="glosInfo" class="foot">Versión de la página: 6 · Leyendo la planilla…</p>
+  <p id="glosInfo" class="foot">Versión de la página: 7 · Leyendo la planilla…</p>
 </div>
 <div class="tip" id="tip" hidden></div>
 <div class="toast" id="toast" hidden></div>
@@ -246,7 +256,7 @@ td.wtot small{color:var(--muted);font-size:11px}
 
 <script>
 window.addEventListener("error",e=>{try{const s=document.querySelector("#status span");if(s){s.textContent="Error en la página: "+(e.message||"desconocido");s.parentElement.className="status err";}}catch(_){}});
-const VERSION=6;
+const VERSION=7;
 const API_URL = "https://script.google.com/macros/s/AKfycbwn5c7J8bFx7fcQgV67ivZqt8ddTu-idJxxKdP8Jalniuxto7wflC3yGZ22uhf5V7o/exec";
 const apiOk = /^https:\/\/script\.google(usercontent)?\.com\//.test(API_URL);
 
@@ -292,7 +302,7 @@ const ROWS=[
 const CHECK=new Set(["tipo","objetivos","dimensiones","jugadores","drills","metricas","rasgo"]);
 function blankSes(){return {inicio:"",objetivo:"",items:[]};}
 function blankDay(){const d={};for(const r of ROWS)d[r.k]=r.n?Array(r.n).fill(""):"";d.sesion=blankSes();return d;}
-function normItem(it){it=it||{};return {t:it.t==="pausa"?"pausa":"drill",bloque:String(it.bloque??""),drill:String(it.drill??""),min:it.min??"",int:it.int??"",dim:String(it.dim??""),jug:String(it.jug??""),detalle:String(it.detalle??"")};}
+function normItem(it){it=it||{};return {t:it.t==="pausa"?"pausa":"drill",hora:String(it.hora??""),bloque:String(it.bloque??""),drill:String(it.drill??""),min:it.min??"",int:it.int??"",dim:String(it.dim??""),jug:String(it.jug??""),detalle:String(it.detalle??"")};}
 function normDay(d){const o=blankDay();if(!d)return o;for(const r of ROWS){const v=d[r.k];if(r.n){const a=Array.isArray(v)?v.map(x=>x==null?"":String(x)):[];o[r.k]=Array.from({length:r.n},(_,i)=>a[i]??"");}else o[r.k]=v==null?"":v;}
   const s=d.sesion||{};o.sesion={inicio:String(s.inicio??""),objetivo:s.objetivo??"",items:Array.isArray(s.items)?s.items.map(normItem):[]};return o;}
 function normWeek(d){d=d||{};return {nombre:String(d.nombre??""),fecha:String(d.fecha??""),orden:+d.orden||0,dias:Array.from({length:7},(_,i)=>normDay(Array.isArray(d.dias)?d.dias[i]:null))};}
@@ -515,9 +525,18 @@ function onCellInput(e){
 }
 
 // sesiones: cálculos
+// Duración total = de la primera hora de inicio al último final. Tiempo activo = minutos en que hay al menos un drill
+// (los drills en paralelo no se suman dos veces). Sin horarios, se suman los minutos.
 function sesStats(s){
-  let total=0,activo=0,pausas=0,n=0; (s&&s.items||[]).forEach(it=>{const m=num(it.min);total+=m;if(it.t==="pausa")pausas+=m;else{activo+=m;n++;}});
-  return {total,activo,pausas,n};
+  const items=s&&s.items||[]; const times=schedule(s||{items:[]});
+  let sum=0,pausas=0,n=0,drillSum=0,all=items.length>0; const iv=[];
+  items.forEach((it,i)=>{const m=num(it.min);sum+=m;if(it.t==="pausa")pausas+=m;else{drillSum+=m;n++;} if(times[i]==null)all=false;else iv.push([times[i],times[i]+m,it.t,i]);});
+  if(!all) return {total:sum,activo:drillSum,pausas,n,par:new Set(),start:null,end:null};
+  const start=Math.min(...iv.map(x=>x[0])), end=Math.max(...iv.map(x=>x[1]));
+  const dr=iv.filter(x=>x[2]!=="pausa"&&x[1]>x[0]).sort((a,b)=>a[0]-b[0]); let act=0,cs=null,ce=null;
+  dr.forEach(([a,b])=>{if(cs==null||a>=ce){if(cs!=null)act+=ce-cs;cs=a;ce=b;}else ce=Math.max(ce,b);}); if(cs!=null)act+=ce-cs;
+  const par=new Set(); for(let x=0;x<dr.length;x++)for(let y=x+1;y<dr.length;y++){if(dr[y][0]<dr[x][1]&&dr[x][0]<dr[y][1]){par.add(dr[x][3]);par.add(dr[y][3]);}}
+  return {total:end-start,activo:act,pausas,n,par,start,end};
 }
 function dayMinutes(d){const s=sesStats(d.sesion);return s.total>0?s.total:num(d.duracion);}
 function weekStats(w){
@@ -601,7 +620,7 @@ function renderSesion(){
     </section>
     <section class="kpis" id="sKpis"></section>
     <section class="gridcard">
-      <div class="gridhead"><h2>Drills de la sesión</h2><p>Escribí el nombre de un drill del banco y se completan solos el bloque, los minutos y el resto. Podés cambiar cualquier dato.</p></div>
+      <div class="gridhead"><h2>Drills de la sesión</h2><p>Escribí el nombre de un drill del banco y se completan solos el bloque, los minutos y el resto. La hora se calcula sola, pero podés escribir otra: si dos drills coinciden (por ejemplo, forwards y backs a la vez) se marcan “en paralelo” y no se suman dos veces.</p></div>
       <div class="scroller"><table class="ses" id="sesT"></table></div>
       <div class="sesfoot" id="sesFoot"></div>
     </section>
@@ -614,14 +633,16 @@ function renderSesion(){
   renderSesTable();
 }
 function focusLast(f){const rows=document.querySelectorAll("#sesT tbody tr");const r=rows[rows.length-1];if(r){const i=r.querySelector(`[data-f="${f}"]`);if(i)i.focus();}}
-function schedule(s){const ini=parseHM(s.inicio);let t=ini;return s.items.map(it=>{const st=t;if(t!=null)t+=num(it.min);return st;});}
+// Hora de cada ítem: la escrita a mano o, si no, cuando termina lo anterior (el final más tardío hasta ese momento).
+function schedule(s){const ini=parseHM(s.inicio);let t=ini;return (s.items||[]).map(it=>{const h=parseHM(it.hora);const st=h!=null?h:t;if(st!=null){const e=st+num(it.min);t=t==null?e:Math.max(t,e);}return st;});}
+function normHora(v){v=String(v||"").trim().replace(/\s/g,"");if(!v)return"";let m=v.match(/^(\d{1,2})[:.hH]?(\d{2})$/);if(!m){m=v.match(/^(\d{1,2})$/);if(m)m=[0,m[1],"00"];}if(!m)return null;const h=+m[1],mi=+m[2];if(h>23||mi>59)return null;return p2(h)+":"+p2(mi);}
 function renderSesKpis(){
   const w=weeks[cur], d=w.dias[sesDay], s=d.sesion, st=sesStats(s);
   const obj=s.objetivo!==""?num(s.objetivo):num(d.duracion); const diff=st.total-obj;
   const ini=parseHM(s.inicio);
   $("#sKpis").innerHTML=`
-    <div class="kpi"><span>Duración total</span><b>${fmt(st.total)}<small>min</small></b><em>${ini!=null?hm(ini)+" a "+hm(ini+st.total):"Poné la hora de inicio para ver horarios"}</em></div>
-    <div class="kpi"><span>Tiempo activo</span><b>${fmt(st.activo)}<small>min</small></b><em>${st.n} drill${st.n===1?"":"s"}</em></div>
+    <div class="kpi"><span>Duración total</span><b>${fmt(st.total)}<small>min</small></b><em>${st.start!=null?hm(st.start)+" a "+hm(st.end):"Poné la hora de inicio para ver horarios"}</em></div>
+    <div class="kpi"><span>Tiempo activo</span><b>${fmt(st.activo)}<small>min</small></b><em>${st.n} drill${st.n===1?"":"s"}${st.par.size?` · ${st.par.size} en paralelo`:""}</em></div>
     <div class="kpi"><span>Pausas</span><b>${fmt(st.pausas)}<small>min</small></b><em>${s.items.filter(x=>x.t==="pausa").length} pausa(s)</em></div>
     <div class="kpi"><span>Objetivo</span><b>${obj?fmt(obj):"–"}<small>min</small></b><em>${s.objetivo!==""?"de la sesión":(obj?"duración del día":"sin objetivo")}</em></div>
     <div class="kpi ${obj&&diff>0?"over":obj&&diff<0?"under":""}"><span>Diferencia</span><b>${obj?(diff>0?"+":"")+fmt(diff):"–"}<small>min</small></b><em>${!obj?"&nbsp;":diff>0?"te pasaste del objetivo":diff<0?"te faltan minutos":"justo en el objetivo"}</em></div>`;
@@ -632,32 +653,42 @@ function renderSesKpis(){
 }
 function renderSesTable(onlyTimes){
   const s=weeks[cur].dias[sesDay].sesion; const times=schedule(s);
-  if(onlyTimes){document.querySelectorAll("#sesT [data-time]").forEach((el,i)=>el.textContent=times[i]!=null?hm(times[i]):"–");renderSesKpis();return;}
+  if(onlyTimes){const st=sesStats(s);document.querySelectorAll("#sesT input[data-f=hora]").forEach(el=>{const i=+el.dataset.i;if(document.activeElement!==el&&!s.items[i].hora)el.value=times[i]!=null?hm(times[i]):"";});
+    document.querySelectorAll("#sesT tbody tr[data-row]").forEach(tr=>{const i=+tr.dataset.row;tr.classList.toggle("par",st.par.has(i));});renderSesKpis();return;}
+  const stp=sesStats(s);
   const T=$("#sesT");
   let h=`<thead><tr><th>#</th><th>Hora</th><th>Bloque</th><th>Drill</th><th>Min</th><th>Int.</th><th>Dimensiones</th><th>Jugadores</th><th>Detalle</th><th></th></tr></thead><tbody>`;
   if(!s.items.length) h+=`<tr><td colspan="10" class="emptyrow">Todavía no hay drills. Tocá “+ Drill” para empezar o “+ Pausa de hidratación” para sumar una pausa.</td></tr>`;
   let n=0;
   s.items.forEach((it,i)=>{
-    const tm=times[i]!=null?hm(times[i]):"–";
+    const tm=times[i]!=null?hm(times[i]):"";
+    const tcell=`<td class="tm"><input class="hora ${it.hora?"manual":""}" data-i="${i}" data-f="hora" inputmode="numeric" value="${tm}" placeholder="--:--" title="${it.hora?"Hora escrita a mano. Borrala para que se calcule sola":"Hora calculada. Escribí otra si este drill va en paralelo"}" aria-label="Hora">${it.hora?`<button class="reset" data-a="auto" data-i="${i}" title="Volver a la hora calculada">↺</button>`:""}</td>`;
     const ctl=`<td class="ctl"><button data-a="up" data-i="${i}" title="Subir" ${i===0?"disabled":""}>↑</button><button data-a="down" data-i="${i}" title="Bajar" ${i===s.items.length-1?"disabled":""}>↓</button><button data-a="del" data-i="${i}" title="Quitar">✕</button></td>`;
     if(it.t==="pausa"){
-      h+=`<tr class="pausa"><td class="n">·</td><td class="tm" data-time>${tm}</td><td colspan="2"><input data-i="${i}" data-f="drill" value="${esc(it.drill)}" aria-label="Pausa"></td><td><input class="num" data-i="${i}" data-f="min" inputmode="numeric" value="${esc(it.min)}" aria-label="Minutos"></td><td colspan="4" class="muted">Pausa</td>${ctl}</tr>`;
+      h+=`<tr class="pausa" data-row="${i}"><td class="n">·</td>${tcell}<td colspan="2"><input data-i="${i}" data-f="drill" value="${esc(it.drill)}" aria-label="Pausa"></td><td><input class="num" data-i="${i}" data-f="min" inputmode="numeric" value="${esc(it.min)}" aria-label="Minutos"></td><td colspan="4" class="muted">Pausa</td>${ctl}</tr>`;
     }else{
       n++;
       const f=(k,list,cls="")=>{const oc=list&&CHECK.has(list)&&it[k]&&!inList(list,it[k])?" off":"";return `<input class="${cls}${oc}" data-i="${i}" data-f="${k}" ${list?`list="dl-${list}"`:""} value="${esc(it[k])}" autocomplete="off" placeholder="—">`;};
-      h+=`<tr><td class="n">${n}</td><td class="tm" data-time>${tm}</td><td>${f("bloque","bloque")}</td><td>${f("drill","banco","wide")}</td><td>${f("min",null,"num")}</td><td>${f("int","int","num")}</td><td>${f("dim","dimensiones")}</td><td>${f("jug","jugadores")}</td><td>${f("detalle",null,"wide")}</td>${ctl}</tr>`;
+      h+=`<tr data-row="${i}" class="${stp.par.has(i)?"par":""}"><td class="n">${n}<span class="partag">en paralelo</span></td>${tcell}<td>${f("bloque","bloque")}</td><td>${f("drill","banco","wide")}</td><td>${f("min",null,"num")}</td><td>${f("int","int","num")}</td><td>${f("dim","dimensiones")}</td><td>${f("jug","jugadores")}</td><td>${f("detalle",null,"wide")}</td>${ctl}</tr>`;
     }
   });
   T.innerHTML=h+`</tbody>`;
   T.oninput=e=>{
     const el=e.target; if(!el.dataset||!el.dataset.f)return; const it=s.items[+el.dataset.i]; const k=el.dataset.f;
+    if(k==="hora")return;
     it[k]=(k==="min"||k==="int")?(el.value.trim()===""?"":num(el.value)):el.value;
     if(k==="drill"&&it.t==="drill"){const b=BANCO.find(x=>normV(x.nombre)===normV(el.value));if(b){let filled=false;for(const kk of ["bloque","min","int","dim","jug","detalle"]){if((it[kk]===""||it[kk]==null)&&b[kk]!==""&&b[kk]!=null){it[kk]=(kk==="min"||kk==="int")?num(b[kk]):String(b[kk]);filled=true;}}if(filled){scheduleSave(cur);renderSesTable();const r=document.querySelector(`#sesT [data-i="${el.dataset.i}"][data-f="drill"]`);if(r){r.focus();r.setSelectionRange(r.value.length,r.value.length);}return;}}}
     if(k==="min")renderSesTable(true); else renderSesKpis();
     scheduleSave(cur);
   };
-  T.onchange=e=>{const el=e.target;if(!el.dataset||!el.dataset.f)return;const map={bloque:"bloque",dim:"dimensiones",jug:"jugadores"};const L=map[el.dataset.f];if(L){addToList(L,el.value);el.classList.remove("off");}};
+  T.onchange=e=>{const el=e.target;if(!el.dataset||!el.dataset.f)return;
+    if(el.dataset.f==="hora"){const i=+el.dataset.i;const it=s.items[i];const v=normHora(el.value);
+      if(v===null){toast("Escribí la hora así: 18:10");el.value=it.hora||"";return;}
+      const prev=it.hora; it.hora="";const auto=schedule(s)[i];
+      it.hora=(v===""||auto!=null&&v===hm(auto))?"":v;
+      if(it.hora!==prev){scheduleSave(cur);}renderSesTable();return;}const map={bloque:"bloque",dim:"dimensiones",jug:"jugadores"};const L=map[el.dataset.f];if(L){addToList(L,el.value);el.classList.remove("off");}};
   T.onclick=e=>{const b=e.target.closest("button[data-a]");if(!b)return;const i=+b.dataset.i;const a=b.dataset.a;
+    if(a==="auto"){s.items[i].hora="";renderSesTable();scheduleSave(cur);return;}
     if(a==="del")s.items.splice(i,1);else if(a==="up"&&i>0)[s.items[i-1],s.items[i]]=[s.items[i],s.items[i-1]];else if(a==="down"&&i<s.items.length-1)[s.items[i+1],s.items[i]]=[s.items[i],s.items[i+1]];
     renderSesTable();scheduleSave(cur);};
   renderSesKpis();
