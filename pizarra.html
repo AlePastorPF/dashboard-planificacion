@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIC Pizarra</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: herramienta de entrenador, directa, de vestuario.
+   IDEA: la pizarra magnética del vestuario, con la cancha pintada.
+   PICTURE: la cancha misma, grande, con fichas y flechas que se mueven.
+   COLOUR and TYPE: verde cancha, líneas blancas, rojo/azul de equipos, amarillo escudo; Barlow Condensed + Barlow.
+   LAYOUT: barra de herramientas, pizarrón grande, panel de ficha y biblioteca a la derecha; apilado en móvil. */
+:root{--bg:#f3f5f7;--ink:#0f1214;--card:#ffffff;--line:#dde3e8;--mut:#5d6974;--soft:#f8fafb;--pitch:#1d8ad0;--acc:#1d8ad0;--dark:#121417;--red:#c2410c;--blue:#2f6bff;--club-soft:#e3f1fb}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0d1114;--ink:#eef2f5;--card:#151b20;--line:#253039;--mut:#93a0ab;--soft:#11161a;--pitch:#3aa4e6;--acc:#3aa4e6;--dark:#e9edf0;--red:#e58a43;--club-soft:#14324a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1114;--ink:#eef2f5;--card:#151b20;--line:#253039;--mut:#93a0ab;--soft:#11161a;--pitch:#3aa4e6;--acc:#3aa4e6;--dark:#e9edf0;--red:#e58a43;--club-soft:#14324a;color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+body.embedded{background:transparent}
+h1,h2,h3{font-family:"Barlow Condensed",sans-serif;line-height:1.05;margin:0;text-wrap:balance}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.top{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:0 max(3vw,16px) 0;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
+body.embedded .top{margin:0}
+.top h1{font-size:22px;letter-spacing:.04em;text-transform:uppercase}
+.top h1 span{color:var(--pitch)}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-weight:600;font-size:15px;display:inline-flex;align-items:center;gap:6px}
+.top .btn{min-height:38px;font-size:14px}
+.top .btn:hover{border-color:var(--pitch)}
+.top .btn.pri{background:var(--pitch);color:#fff;border-color:var(--pitch)}
+.top select.btn{padding-right:10px}
+.top select.btn option{color:initial}
+.btn.danger{color:var(--red)}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;padding:16px max(3vw,16px) 40px;max-width:1500px;margin:0 auto}
+body.embedded .wrap{padding:14px 0 8px}
+.tools{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tool{min-width:64px;min-height:58px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:13px;font-weight:600;padding:4px 8px}
+.tool svg{width:24px;height:24px}
+.tool[aria-pressed=true]{background:var(--dark);color:var(--bg);border-color:var(--dark);box-shadow:inset 0 -3px 0 var(--pitch)}
+.sep{width:1px;background:var(--line);margin:4px 4px}
+.bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:10px;font-size:15px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:none;min-height:40px;padding:0 12px;font-weight:600}
+.seg button[aria-pressed=true]{background:var(--pitch);color:#fff}
+.chips{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chip{min-width:40px;min-height:40px;border-radius:20px;border:1px solid var(--line);background:var(--card);font-weight:700}
+.chip[aria-pressed=true]{background:var(--pitch);color:#fff;border-color:var(--pitch)}
+.small{min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-weight:600;font-size:14px}
+.board{background:#26722f;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.18),inset 0 0 0 1px rgba(0,0,0,.15)}
+#pz{display:block;width:100%;height:auto;max-height:78vh;touch-action:none;user-select:none;-webkit-user-select:none}
+#pz.place{cursor:crosshair}#pz.sel{cursor:default}#pz.del{cursor:not-allowed}
+.hint{color:var(--mut);font-size:14px;margin:8px 2px 0}
+.panel{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{font-size:19px;letter-spacing:.03em;text-transform:uppercase;margin-bottom:10px}
+label{display:block;font-size:14px;font-weight:600;color:var(--mut);margin-bottom:10px}
+label input,label textarea,label select{display:block;width:100%;margin-top:4px;font-size:16px;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--soft);font-weight:400}
+textarea{resize:vertical;min-height:84px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 10px}
+.mut{color:var(--mut);margin:0;font-size:15px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.sw{display:flex;gap:8px;margin:4px 0 12px}
+.sw button{width:40px;height:40px;border-radius:50%;border:2px solid var(--line)}
+.sw button[aria-pressed=true]{outline:3px solid var(--acc);outline-offset:2px}
+.lib{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.lib li{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--soft)}
+.lib b{display:block;font-size:16px}
+.lib li.on{border-color:var(--pitch);background:var(--club-soft)}
+.lib .link{font-size:12px;color:var(--pitch);font-weight:600;margin-bottom:6px;display:block}
+.lib small{color:var(--mut);font-size:13px;display:block;margin-bottom:6px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--dark);color:var(--bg);padding:10px 18px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;font-weight:600}
+.toast.on{opacity:1;transform:translateX(-50%)}
+dialog{border:0;border-radius:16px;padding:20px;max-width:min(920px,94vw);width:100%;background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(5,15,10,.6)}
+dialog img{width:100%;border-radius:10px;display:block;margin:10px 0}
+dialog textarea{width:100%;min-height:120px;font:13px/1.4 ui-monospace,monospace;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--soft)}
+@media(max-width:960px){.wrap{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.top h1{font-size:26px}.tool{min-width:56px;font-size:13px}.sep{display:none}}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Pizarra <span>de ejercicios</span></h1>
+  <div class="acts">
+    <button class="btn" id="undo" title="Deshacer (Ctrl+Z)">↶ Deshacer</button>
+    <button class="btn" id="redoB" title="Rehacer (Ctrl+Y)">↷ Rehacer</button>
+    <select class="btn" id="preset" aria-label="Plantillas">
+      <option value="">Plantillas…</option>
+      <option value="0">3 vs 2 en grilla</option>
+      <option value="1">Salida de ruck 9-10-12</option>
+      <option value="2">Recepción de patada</option>
+    </select>
+    <button class="btn" id="newB">Nuevo</button>
+    <button class="btn" id="imgB">Imagen</button>
+    <button class="btn" id="shareB">Compartir</button>
+    <button class="btn pri" id="saveB">Guardar</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <div class="tools" role="toolbar" aria-label="Herramientas">
+      <button class="tool" data-tool="sel" title="Mover y seleccionar"><svg viewBox="0 0 24 24"><path d="M6 3l13 8-6 1.6L10 19z" fill="currentColor"/></svg>Mover</button>
+      <span class="sep"></span>
+      <button class="tool" data-tool="a" title="Atacante"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#e63946" stroke="#fff" stroke-width="1.5"/></svg>Ataque</button>
+      <button class="tool" data-tool="d" title="Defensor"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#2f6bff" stroke="#fff" stroke-width="1.5"/></svg>Defensa</button>
+      <button class="tool" data-tool="ball" title="Pelota"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-30 12 12)" fill="#f2e6c9" stroke="#5a3a1a" stroke-width="1.4"/></svg>Pelota</button>
+      <button class="tool" data-tool="cone" title="Cono"><svg viewBox="0 0 24 24"><polygon points="12,4 20,20 4,20" fill="#ff7a00"/></svg>Cono</button>
+      <button class="tool" data-tool="shield" title="Escudo de contacto"><svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="18" rx="3" fill="#f4c430" stroke="#13201a" stroke-width="1.4"/></svg>Escudo</button>
+      <span class="sep"></span>
+      <button class="tool" data-tool="run" title="Carrera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 19L18 6M12 6h6v6"/></svg>Carrera</button>
+      <button class="tool" data-tool="pass" title="Pase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 19L18 6" stroke-dasharray="3 3"/><path d="M12 6h6v6"/></svg>Pase</button>
+      <button class="tool" data-tool="kick" title="Patada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 19Q8 2 20 9" stroke-dasharray=".1 4"/><path d="M15 6l5 3-3 5"/></svg>Patada</button>
+      <button class="tool" data-tool="text" title="Texto"><svg viewBox="0 0 24 24"><text x="12" y="19" text-anchor="middle" font-size="18" font-weight="700" fill="currentColor" font-family="Barlow Condensed,sans-serif">T</text></svg>Texto</button>
+      <span class="sep"></span>
+      <button class="tool" data-tool="del" title="Borrar al tocar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>Borrar</button>
+    </div>
+
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Espacio">
+        <button data-field="grid">Grilla</button><button data-field="half">Media cancha</button><button data-field="full">Cancha</button>
+      </div>
+      <label style="margin:0;display:flex;align-items:center;gap:8px">Fichas <input id="size" type="range" min="0.6" max="1.8" step="0.1" style="width:110px;margin:0;padding:0"></label>
+      <div class="chips"><span style="font-weight:600;color:var(--mut)">Pasos</span><span class="chips" id="chips"></span>
+        <button class="small" id="addF">+ Paso</button><button class="small" id="delF">Quitar paso</button><button class="small" id="play">▶ Ver jugada</button>
+      </div>
+    </div>
+
+    <div class="board"><svg id="pz" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pizarrón de rugby"></svg></div>
+    <p class="hint">Arrastrá para mover · Flechas: clic en el inicio y arrastrá hasta el final · Cada <b>paso</b> copia el anterior: mové las fichas y tocá «Ver jugada» para animar · Supr borra · Ctrl+Z deshace.</p>
+  </section>
+
+  <aside class="panel">
+    <section class="card"><h2>Elemento</h2><div id="selBox"></div></section>
+    <section class="card">
+      <h2>Ficha del ejercicio</h2>
+      <label>Nombre<input id="fTitle" data-k="title" placeholder="Ej.: 2 vs 1 en pasillo"></label>
+      <label>Objetivo<input id="fGoal" data-k="goal"></label>
+      <div class="two">
+        <label>División<input id="fDiv" data-k="div" list="divs"></label>
+        <label>Duración (min)<input id="fDur" data-k="dur" inputmode="numeric"></label>
+      </div>
+      <label>Jugadores y material<input id="fPlayers" data-k="players"></label>
+      <label>Drill del banco (para vincularlo)<input id="fDrill" data-k="drill" list="bancoList" placeholder="Ej.: Ruck 2v1 con escudos"></label>
+      <datalist id="bancoList"></datalist>
+      <label>Consignas / puntos clave<textarea id="fNotes" data-k="notes"></textarea></label>
+      <label>Variantes y progresiones<textarea id="fVars" data-k="vars"></textarea></label>
+      <datalist id="divs"><option>M12</option><option>M13</option><option>M14</option><option>M15</option><option>M16</option><option>M17</option><option>M19</option><option>Intermedia</option><option>Plantel superior</option></datalist>
+    </section>
+    <section class="card">
+      <h2>Mis ejercicios</h2>
+      <ul class="lib" id="lib"></ul>
+      <p class="mut" id="libNote" style="font-size:13px;margin-top:10px">Se guardan en este navegador. Para pasarlos a otro dispositivo o a otro entrenador, usá «Compartir».</p>
+    </section>
+  </aside>
+</main>
+
+<dialog id="dlgImg">
+  <h2 style="font-size:26px">Imagen del ejercicio</h2>
+  <p class="mut">Clic derecho (o mantené apretado en el celular) sobre la imagen → «Guardar imagen» o «Copiar imagen».</p>
+  <img id="imgOut" alt="Ejercicio exportado">
+  <div class="row"><button class="btn" id="copyImg">Copiar imagen</button><button class="btn" data-close>Cerrar</button></div>
+</dialog>
+
+<dialog id="dlgShare">
+  <h2 style="font-size:26px">Compartir ejercicio</h2>
+  <p class="mut">Copiá este código y mandalo. Quien lo reciba lo pega abajo en «Importar».</p>
+  <textarea id="shareOut" readonly></textarea>
+  <div class="row" style="margin:8px 0 18px"><button class="btn" id="copyCode">Copiar código</button></div>
+  <h3 style="font-size:20px;margin-bottom:6px">Importar</h3>
+  <textarea id="shareIn" placeholder="Pegá acá el código de un ejercicio"></textarea>
+  <div class="row" style="margin-top:8px"><button class="btn" id="importB">Cargar ejercicio</button><button class="btn" data-close>Cerrar</button></div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+{
+const $=s=>document.querySelector(s);
+const svg=$('#pz');
+const FIELDS={grid:[-2,-2,44,34],half:[44,-3,70,76],full:[-13,-3,126,76]};
+const COL={white:'#ffffff',yellow:'#f4c430',sky:'#9cc0ff',red:'#ff6b76',black:'#111111'};
+const NAMES={a:'Atacante',d:'Defensor',ball:'Pelota',cone:'Cono',shield:'Escudo',text:'Texto',run:'Carrera',pass:'Pase',kick:'Patada'};
+const LINES=['run','pass','kick'],TOKENS=['a','d','ball','cone','shield','text'];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
+let doc,f=0,sel=null,tool='sel',hist=[],redo=[],drag=null,playing=false,lastCv=null;
+
+const blank=()=>({id:uid(),title:'',goal:'',div:'',dur:'',players:'',drill:'',notes:'',vars:'',field:'grid',size:1,frames:[[]]});
+const T=(t,id,x,y,label='')=>({id,t,x,y,label});
+const L=(t,x,y,x2,y2,c)=>({id:uid(),t,x,y,x2,y2,c:c||(t==='pass'?'yellow':'white')});
+
+const PRESETS=[
+()=>{const cones=[T('cone','c1',0,0),T('cone','c2',40,0),T('cone','c3',0,30),T('cone','c4',40,30)];
+ return {...blank(),title:'3 vs 2 en grilla',goal:'Fijar al defensor y pasar a tiempo para explotar la superioridad numérica.',div:'M15',dur:'12',players:'3 atacantes + 2 defensores (rotan), 4 conos, 1 pelota',
+ notes:'• Correr derecho y atacar el hombro interno del defensor.\n• Pasar antes del contacto, a la altura del receptor.\n• El receptor llega en profundidad y a velocidad.',
+ vars:'• Sumar un tercer defensor que entra desde atrás.\n• Límite de 6 segundos para cruzar la línea.',field:'grid',
+ frames:[[...clone(cones),T('a','a1',6,8,'1'),T('a','a2',6,15,'2'),T('a','a3',6,22,'3'),T('ball','b',7.4,15.5),T('d','d1',28,11,'1'),T('d','d2',28,19,'2'),
+  L('run',7.6,8,15,7),L('run',7.6,15,15,15),L('run',7.6,22,15,23),L('run',26.4,11.4,21.6,13.4,'sky'),L('run',26.4,18.8,21.6,18.6,'sky'),L('pass',15.6,14,15.4,8.8)],
+ [...clone(cones),T('a','a1',15,7,'1'),T('a','a2',15,15,'2'),T('a','a3',15,23,'3'),T('ball','b',16.4,7.5),T('d','d1',21,13.5,'1'),T('d','d2',21,18.6,'2'),
+  L('run',16.6,7,31,5.5),L('run',16.6,23,30,24),L('run',22.2,12.6,26,8,'sky')],
+ [...clone(cones),T('a','a1',29,5.5,'1'),T('a','a2',21,14,'2'),T('a','a3',29,24,'3'),T('ball','b',30.4,6),T('d','d1',25,9,'1'),T('d','d2',25,19.5,'2'),T('text','t1',33,13,'¡Línea!')]]}},
+()=>({...blank(),title:'Salida de ruck 9-10-12',goal:'Velocidad de salida del ruck y alineación en profundidad del ataque.',div:'M17',dur:'15',players:'6 atacantes, 5 defensores, 2 escudos',
+ notes:'• El 9 llega al ruck mirando el ataque.\n• 10 y 12 en profundidad: arrancan cuando la pelota sale.\n• Comunicación: «¡salgo!», «¡corto!».',vars:'• Defensa sale en «blitz».\n• Alternar pase largo del 9 al 12.',field:'half',
+ frames:[[T('shield','s1',63,33),T('shield','s2',64.4,35),T('a','a9',61,36.5,'9'),T('ball','b',62.3,35.4),T('a','a10',57,42,'10'),T('a','a12',55.5,48,'12'),T('a','a13',54,54,'13'),T('a','a15',51,60,'15'),T('a','a7',61,31,'7'),
+  T('d','e1',67,38,'1'),T('d','e2',67,43,'2'),T('d','e3',67,48,'3'),T('d','e4',67,53,'4'),T('d','e5',68,59,'5'),
+  L('pass',61.6,37.8,57.8,40.8),L('run',58.4,42.6,64,45),L('pass',63.6,45.8,60.2,49.4),L('run',57,48.6,65,51.5),L('run',55.4,54.4,64,58)]]}),
+()=>({...blank(),title:'Recepción de patada y contraataque',goal:'Organizar el triángulo de recepción y salir en contraataque.',div:'Plantel superior',dur:'20',players:'3 receptores, 3 perseguidores, pateador',
+ notes:'• El 15 pide la pelota fuerte («¡mía!»).\n• Wings cubren atrás en profundidad.\n• Primer paso: correr hacia el espacio, no hacia la línea de persecución.',vars:'• Patada cruzada.\n• Sumar dos perseguidores más.',field:'full',
+ frames:[[T('d','k',38,35,'10'),T('ball','b',39.4,35.2),T('d','p1',42,20,'11'),T('d','p2',44,35,'12'),T('d','p3',42,50,'14'),
+  T('a','r15',90,35,'15'),T('a','r11',84,12,'11'),T('a','r14',86,58,'14'),
+  L('kick',40,34.4,87,24),L('run',89,33.8,87.6,25.6),L('run',43.6,20,62,22,'sky'),L('run',45.6,35,64,31,'sky'),L('run',85,13.2,82,22),L('run',85.6,56.6,82,46)]]})
+];
+
+/* ---------- field drawing ---------- */
+const FCACHE={};
+function fieldSVG(k){
+ if(FCACHE[k])return FCACHE[k];
+ let s='';const W='#ffffff';
+ if(k==='grid'){
+  s+=`<rect x="-2" y="-2" width="44" height="34" fill="#26722f"/>`;
+  for(let x=0;x<40;x+=5)s+=`<rect x="${x}" y="0" width="5" height="30" fill="${(x/5)%2?'#2c8039':'#2f873d'}"/>`;
+  for(let x=5;x<40;x+=5)s+=`<line x1="${x}" y1="0" x2="${x}" y2="30" stroke="${W}" stroke-opacity=".14" stroke-width=".12"/>`;
+  for(let y=5;y<30;y+=5)s+=`<line x1="0" y1="${y}" x2="40" y2="${y}" stroke="${W}" stroke-opacity=".14" stroke-width=".12"/>`;
+  s+=`<rect x="0" y="0" width="40" height="30" fill="none" stroke="${W}" stroke-opacity=".55" stroke-width=".18" stroke-dasharray=".8 .6"/>`;
+  for(let x=10;x<40;x+=10)s+=`<text x="${x}" y="-.5" fill="${W}" fill-opacity=".6" font-size="1.2" text-anchor="middle" font-family="Barlow,sans-serif">${x} m</text>`;
+ }else{
+  s+=`<rect x="-15" y="-5" width="130" height="80" fill="#26722f"/>`;
+  for(let x=-10,i=0;x<110;x+=10,i++)s+=`<rect x="${x}" y="0" width="10" height="70" fill="${i%2?'#2c8039':'#2f873d'}"/>`;
+  const ln=(x1,y1,x2,y2,d='',w=.3)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${W}" stroke-width="${w}" ${d?`stroke-dasharray="${d}"`:''}/>`;
+  s+=`<rect x="-10" y="0" width="120" height="70" fill="none" stroke="${W}" stroke-width=".35"/>`;
+  [0,100,22,78,50].forEach(x=>s+=ln(x,0,x,70,'',x===0||x===100?.4:.3));
+  [40,60].forEach(x=>s+=ln(x,0,x,70,'2 2'));
+  [5,95].forEach(x=>s+=ln(x,0,x,70,'1 3',.22));
+  [5,15,55,65].forEach(y=>[5,22,40,50,60,78,95].forEach(x=>s+=ln(x-1,y,x+1,y,'',.25)));
+  [0,100].forEach(x=>{s+=`<line x1="${x}" y1="32.2" x2="${x}" y2="37.8" stroke="${W}" stroke-width=".7"/><circle cx="${x}" cy="32.2" r=".45" fill="${W}"/><circle cx="${x}" cy="37.8" r=".45" fill="${W}"/>`});
+  [[22,'22'],[40,'10'],[50,'½'],[60,'10'],[78,'22']].forEach(([x,t])=>s+=`<text x="${x}" y="-.8" fill="${W}" fill-opacity=".75" font-size="2" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700">${t}</text>`);
+  s+=`<text x="-5" y="36" fill="${W}" fill-opacity=".35" font-size="2" text-anchor="middle" transform="rotate(-90 -5 35)" font-family="Barlow Condensed,sans-serif">IN-GOAL</text><text x="105" y="36" fill="${W}" fill-opacity=".35" font-size="2" text-anchor="middle" transform="rotate(90 105 35)" font-family="Barlow Condensed,sans-serif">IN-GOAL</text>`;
+ }
+ return FCACHE[k]=s;
+}
+const DEFS='<defs>'+Object.entries(COL).map(([k,c])=>`<marker id="m-${k}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="${c}"/></marker>`).join('')+'</defs>';
+
+function linePath(it){
+ if(it.t!=='kick')return `M${it.x},${it.y}L${it.x2},${it.y2}`;
+ const mx=(it.x+it.x2)/2,my=(it.y+it.y2)/2,dx=it.x2-it.x,dy=it.y2-it.y;
+ return `M${it.x},${it.y}Q${mx+dy*.28},${my-dx*.28} ${it.x2},${it.y2}`;
+}
+function itemSVG(it,isSel,op=1){
+ const k=doc.size,F='font-family="Barlow Condensed,sans-serif"';let s='';
+ if(LINES.includes(it.t)){
+  const d=linePath(it),c=COL[it.c]||'#fff',w=(.32*k).toFixed(2);
+  const dash=it.t==='pass'?`stroke-dasharray="${1.1*k} ${.7*k}"`:it.t==='kick'?`stroke-dasharray="0.01 ${.75*k}"`:'';
+  s=`<path d="${d}" fill="none" stroke="transparent" stroke-width="2.6"/><path d="${d}" fill="none" stroke="${c}" stroke-width="${it.t==='kick'?w*1.6:w}" stroke-linecap="round" ${dash} marker-end="url(#m-${it.c||'white'})" opacity="${op}"/>`;
+  if(isSel)s+=`<path d="${d}" fill="none" stroke="#f4c430" stroke-width=".12" stroke-dasharray=".5 .5"/>`+[['1',it.x,it.y],['2',it.x2,it.y2]].map(([h,x,y])=>`<circle data-h="${h}" cx="${x}" cy="${y}" r="${.85*Math.max(k,.8)}" fill="#fff" stroke="#f4c430" stroke-width=".3"/>`).join('');
+ }else{
+  const {x,y}=it;
+  if(it.t==='a'||it.t==='d'){const r=1.25*k;s=`<circle cx="${x}" cy="${y+.18*k}" r="${r}" fill="#000" opacity=".25"/><circle cx="${x}" cy="${y}" r="${r}" fill="${it.t==='a'?'#e63946':'#2f6bff'}" stroke="#fff" stroke-width="${.22*k}"/><text x="${x}" y="${y+.48*k}" text-anchor="middle" font-size="${(it.label.length>2?1:1.35)*k}" font-weight="700" fill="#fff" ${F}>${esc(it.label)}</text>`}
+  else if(it.t==='ball')s=`<g transform="rotate(-30 ${x} ${y})"><ellipse cx="${x}" cy="${y}" rx="${.85*k}" ry="${.55*k}" fill="#f2e6c9" stroke="#5a3a1a" stroke-width="${.14*k}"/><line x1="${x-.35*k}" y1="${y}" x2="${x+.35*k}" y2="${y}" stroke="#5a3a1a" stroke-width="${.1*k}"/></g>`;
+  else if(it.t==='cone'){const r=.75*k;s=`<polygon points="${x},${y-r} ${x+r},${y+r*.8} ${x-r},${y+r*.8}" fill="#ff7a00" stroke="#fff" stroke-width="${.1*k}"/>`}
+  else if(it.t==='shield')s=`<rect x="${x-.6*k}" y="${y-1.2*k}" width="${1.2*k}" height="${2.4*k}" rx="${.45*k}" fill="#f4c430" stroke="#13201a" stroke-width="${.14*k}"/>`;
+  else if(it.t==='text')s=`<text x="${x}" y="${y}" text-anchor="middle" font-size="${1.7*k}" font-weight="700" fill="#fff" stroke="#0b2a16" stroke-width="${.45*k}" paint-order="stroke" ${F}>${esc(it.label||'Texto')}</text>`;
+  if(isSel)s+=`<circle cx="${x}" cy="${y}" r="${(it.t==='text'?2.4:1.9)*k}" fill="none" stroke="#f4c430" stroke-width=".22" stroke-dasharray=".6 .4"/>`;
+  s=`<g opacity="${op}">${s}</g>`;
+ }
+ return `<g data-id="${it.id}">${s}</g>`;
+}
+function renderBoard(list,ghost){
+ const vb=FIELDS[doc.field];
+ svg.setAttribute('viewBox',vb.join(' '));svg.style.aspectRatio=vb[2]+' / '+vb[3];
+ list=list||doc.frames[f];
+ const lines=list.filter(i=>LINES.includes(i.t)),toks=list.filter(i=>!LINES.includes(i.t));
+ svg.innerHTML=DEFS+`<g>${fieldSVG(doc.field)}</g>`+(ghost||[]).map(i=>itemSVG(i,false,.4)).join('')+lines.map(i=>itemSVG(i,i.id===sel)).join('')+toks.map(i=>itemSVG(i,i.id===sel)).join('');
+}
+function renderFrames(){
+ $('#chips').innerHTML=doc.frames.map((_,i)=>`<button class="chip" data-f="${i}" aria-pressed="${i===f}" aria-label="Paso ${i+1}">${i+1}</button>`).join('');
+ $('#delF').disabled=doc.frames.length<2;$('#play').disabled=doc.frames.length<2;
+ document.querySelectorAll('[data-field]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.field===doc.field));
+ $('#size').value=doc.size;
+}
+function renderSel(){
+ const it=cur(),box=$('#selBox');
+ if(!it){box.innerHTML=`<p class="mut">Tocá un elemento del pizarrón para editarlo. Elegí una herramienta arriba para sumar jugadores, material o flechas.</p>`;return}
+ let h=`<p style="margin:0 0 10px;font-weight:700;font-size:18px">${NAMES[it.t]}</p>`;
+ if(['a','d','text'].includes(it.t))h+=`<label>${it.t==='text'?'Texto':'Número o rol'}<input id="selLabel" value="${esc(it.label)}" maxlength="${it.t==='text'?40:4}"></label>`;
+ if(LINES.includes(it.t))h+=`<div style="font-size:14px;font-weight:600;color:var(--mut)">Color</div><div class="sw">`+Object.entries(COL).map(([k,c])=>`<button data-c="${k}" style="background:${c}" aria-label="${k}" aria-pressed="${it.c===k}"></button>`).join('')+`</div>`;
+ h+=`<div class="row"><button class="btn" id="selDup">Duplicar</button><button class="btn danger" id="selDel">Borrar</button></div>`;
+ box.innerHTML=h;
+}
+function render(){renderBoard();renderFrames();saveDraft()}
+const cur=()=>doc.frames[f].find(i=>i.id===sel);
+const find=id=>doc.frames[f].find(i=>i.id===id);
+
+/* ---------- history ---------- */
+const snapOf=()=>JSON.stringify({frames:doc.frames,field:doc.field,size:doc.size,f});
+function snapshot(){hist.push(snapOf());if(hist.length>100)hist.shift();redo=[]}
+function restore(s){const o=JSON.parse(s);doc.frames=o.frames;doc.field=o.field;doc.size=o.size;f=Math.min(o.f,doc.frames.length-1);sel=null;render();renderSel()}
+function undo(){if(hist.length){redo.push(snapOf());restore(hist.pop())}}
+function redoF(){if(redo.length){hist.push(snapOf());restore(redo.pop())}}
+
+/* ---------- storage ---------- */
+const LS='pizarra-rugby-lib',DR='pizarra-rugby-draft';
+// Dentro del dashboard, los ejercicios se guardan en la planilla de Google a través de la página principal.
+const HOST=(()=>{try{return window.parent!==window&&window.parent.PZHOST?window.parent.PZHOST:null}catch(e){return null}})();
+if(HOST){document.body.classList.add('embedded');}
+function lib(){if(HOST)return HOST.list();try{return JSON.parse(localStorage.getItem(LS))||[]}catch(e){return[]}}
+function setLib(a){try{localStorage.setItem(LS,JSON.stringify(a))}catch(e){toast('No se pudo guardar en este navegador')}}
+function saveOne(d){if(HOST)return HOST.save(clone(d));const a=lib().filter(x=>x.id!==d.id);a.push(clone(d));setLib(a);return Promise.resolve();}
+function removeOne(id){if(HOST)return HOST.remove(id);setLib(lib().filter(x=>x.id!==id));return Promise.resolve();}
+function fillBanco(){const dl=$('#bancoList');if(dl&&HOST)dl.innerHTML=HOST.banco().map(n=>`<option value="${esc(n)}"></option>`).join('');}
+function saveDraft(){try{localStorage.setItem(DR,JSON.stringify(doc))}catch(e){}}
+function renderLib(){
+ const a=lib().sort((x,y)=>(y.saved||0)-(x.saved||0));
+ $('#lib').innerHTML=a.length?a.map(d=>`<li class="${doc&&d.id===doc.id?'on':''}"><b>${esc(d.title||'Sin nombre')}</b><small>${esc([d.div,d.dur&&d.dur+' min',(d.frames||[[]]).length+((d.frames||[]).length>1?' pasos':' paso')].filter(Boolean).join(' · '))}</small>${d.drill?`<span class="link">Vinculado a: ${esc(d.drill)}</span>`:''}<div class="row"><button class="small" data-open="${d.id}">Abrir</button><button class="small" data-rm="${d.id}" style="color:var(--red)">Borrar</button></div></li>`).join(''):`<li><span class="mut">Todavía no guardaste ejercicios. Armá uno y tocá «Guardar».</span></li>`;
+}
+function load(d){doc={...blank(),...clone(d)};f=0;sel=null;hist=[];redo=[];fillFicha();render();renderSel();if(typeof renderLib==='function'&&$('#lib'))renderLib()}
+function fillFicha(){document.querySelectorAll('[data-k]').forEach(el=>el.value=doc[el.dataset.k]||'')}
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1800)}
+
+/* ---------- pointer ---------- */
+function pt(e){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(svg.getScreenCTM().inverse());return{x:+q.x.toFixed(2),y:+q.y.toFixed(2)}}
+function nextNum(t){const ns=doc.frames[f].filter(i=>i.t===t).map(i=>parseInt(i.label)||0);return String(Math.max(0,...ns)+1)}
+function lineColor(t,p){if(t==='pass')return'yellow';const near=doc.frames[f].filter(i=>i.t==='a'||i.t==='d').map(i=>[Math.hypot(i.x-p.x,i.y-p.y),i.t]).sort((a,b)=>a[0]-b[0])[0];return near&&near[0]<3&&near[1]==='d'?'sky':'white'}
+svg.addEventListener('pointerdown',e=>{
+ if(playing)return;
+ const p=pt(e),h=e.target.closest('[data-h]'),g=e.target.closest('[data-id]');
+ if(tool==='del'){if(g){snapshot();doc.frames[f]=doc.frames[f].filter(i=>i.id!==g.dataset.id);sel=null;render();renderSel()}return}
+ if(h&&cur()){snapshot();drag={mode:'h',k:h.dataset.h}}
+ else if(g&&!LINES.includes(tool)){sel=g.dataset.id;const it=find(sel);snapshot();drag={mode:'m',sx:p.x,sy:p.y,o:{...it}};renderSel()}
+ else if(TOKENS.includes(tool)){snapshot();const it=T(tool,uid(),p.x,p.y,tool==='a'||tool==='d'?nextNum(tool):tool==='text'?'Texto':'');doc.frames[f].push(it);sel=it.id;drag={mode:'m',sx:p.x,sy:p.y,o:{...it},isNew:true};renderSel();if(tool==='text')setTimeout(()=>{const i=$('#selLabel');i&&(i.focus(),i.select())},50)}
+ else if(LINES.includes(tool)){snapshot();const it=L(tool,p.x,p.y,p.x,p.y,lineColor(tool,p));doc.frames[f].push(it);sel=it.id;drag={mode:'h',k:'2',isNew:true};renderSel()}
+ else{if(sel){sel=null;renderSel()}}
+ if(drag)svg.setPointerCapture(e.pointerId);
+ renderBoard();
+});
+svg.addEventListener('pointermove',e=>{
+ if(!drag)return;const it=cur();if(!it)return;const p=pt(e);drag.moved=true;
+ if(drag.mode==='m'){const dx=p.x-drag.sx,dy=p.y-drag.sy;it.x=+(drag.o.x+dx).toFixed(2);it.y=+(drag.o.y+dy).toFixed(2);if(LINES.includes(it.t)){it.x2=+(drag.o.x2+dx).toFixed(2);it.y2=+(drag.o.y2+dy).toFixed(2)}}
+ else if(drag.k==='1'){it.x=p.x;it.y=p.y}else{it.x2=p.x;it.y2=p.y}
+ renderBoard();
+});
+function endDrag(){
+ if(!drag)return;const it=cur();
+ if(drag.isNew&&it&&LINES.includes(it.t)&&Math.hypot(it.x2-it.x,it.y2-it.y)<1){doc.frames[f]=doc.frames[f].filter(i=>i!==it);sel=null;hist.pop();renderSel()}
+ else if(!drag.isNew&&!drag.moved)hist.pop();
+ drag=null;render();
+}
+svg.addEventListener('pointerup',endDrag);svg.addEventListener('pointercancel',endDrag);
+
+/* ---------- tools & bar ---------- */
+function setTool(t){tool=t;document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tool===t));svg.setAttribute('class',t==='sel'?'sel':t==='del'?'del':'place')}
+document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+document.querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>{if(doc.field===b.dataset.field)return;snapshot();doc.field=b.dataset.field;render()});
+let sizeSnap=false;$('#size').addEventListener('input',e=>{if(!sizeSnap){snapshot();sizeSnap=true}doc.size=+e.target.value;renderBoard();saveDraft()});
+$('#size').addEventListener('change',()=>sizeSnap=false);
+$('#chips').onclick=e=>{const b=e.target.closest('[data-f]');if(b&&!playing){f=+b.dataset.f;sel=null;render();renderSel()}};
+$('#addF').onclick=()=>{if(playing)return;snapshot();doc.frames.splice(f+1,0,clone(doc.frames[f]).filter(i=>!LINES.includes(i.t)));f++;sel=null;render();renderSel();toast('Paso '+(f+1)+': mové las fichas a su nueva posición')};
+$('#delF').onclick=()=>{if(playing||doc.frames.length<2)return;snapshot();doc.frames.splice(f,1);f=Math.max(0,f-1);sel=null;render();renderSel()};
+$('#undo').onclick=undo;$('#redoB').onclick=redoF;
+
+/* ---------- play ---------- */
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+function tween(A,B,ms){return new Promise(res=>{
+ const map=Object.fromEntries(A.filter(i=>!LINES.includes(i.t)).map(i=>[i.id,i]));
+ const ghost=A.filter(i=>LINES.includes(i.t)),toks=B.filter(i=>!LINES.includes(i.t));
+ const t0=performance.now();
+ const step=now=>{let t=Math.min(1,(now-t0)/ms);const e=t<.5?2*t*t:1-(-2*t+2)**2/2;
+  renderBoard(toks.map(b=>{const a=map[b.id];return a?{...b,x:a.x+(b.x-a.x)*e,y:a.y+(b.y-a.y)*e}:b}),ghost);
+  t<1?requestAnimationFrame(step):res()};
+ requestAnimationFrame(step)})}
+$('#play').onclick=async()=>{
+ if(playing||doc.frames.length<2)return;playing=true;sel=null;renderSel();$('#play').textContent='… reproduciendo';
+ f=0;renderFrames();renderBoard();await wait(700);
+ for(let i=0;i<doc.frames.length-1;i++){
+  if(reduce){await wait(900)}else{await tween(doc.frames[i],doc.frames[i+1],1300)}
+  f=i+1;renderFrames();renderBoard();await wait(600);
+ }
+ playing=false;$('#play').textContent='▶ Ver jugada';
+};
+
+/* ---------- selection panel ---------- */
+$('#selBox').addEventListener('click',e=>{
+ const it=cur();if(!it)return;
+ const c=e.target.closest('[data-c]');
+ if(c){snapshot();it.c=c.dataset.c;render();renderSel()}
+ if(e.target.id==='selDup'){snapshot();const n={...clone(it),id:uid(),x:it.x+1.8,y:it.y+1.8};if(LINES.includes(it.t)){n.x2=it.x2+1.8;n.y2=it.y2+1.8}if(it.t==='a'||it.t==='d')n.label=nextNum(it.t);doc.frames[f].push(n);sel=n.id;render();renderSel()}
+ if(e.target.id==='selDel')delSel();
+});
+let labSnap=false;
+$('#selBox').addEventListener('focusin',e=>{if(e.target.id==='selLabel'&&!labSnap){snapshot();labSnap=true}});
+$('#selBox').addEventListener('focusout',()=>{labSnap=false;saveDraft()});
+$('#selBox').addEventListener('input',e=>{if(e.target.id==='selLabel'){const it=cur();if(it){it.label=e.target.value;renderBoard()}}});
+function delSel(){if(!cur())return;snapshot();doc.frames[f]=doc.frames[f].filter(i=>i.id!==sel);sel=null;render();renderSel()}
+
+document.addEventListener('keydown',e=>{
+ if(e.target.matches('input,textarea,select'))return;
+ const m=e.ctrlKey||e.metaKey;
+ if(m&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redoF():undo()}
+ else if(m&&e.key.toLowerCase()==='y'){e.preventDefault();redoF()}
+ else if(e.key==='Delete'||e.key==='Backspace'){if(sel){e.preventDefault();delSel()}}
+ else if(e.key==='Escape'){sel=null;setTool('sel');renderBoard();renderSel()}
+});
+
+/* ---------- ficha, library, presets ---------- */
+document.querySelectorAll('[data-k]').forEach(el=>el.addEventListener('input',()=>{doc[el.dataset.k]=el.value;saveDraft()}));
+$('#saveB').onclick=async()=>{doc.saved=Date.now();if(!doc.title.trim()){toast('Poné un nombre al ejercicio antes de guardarlo');$('#fTitle').focus();return}
+ try{await saveOne(doc);renderLib();toast(HOST?'Guardado en la planilla':'Ejercicio guardado')}catch(e){toast('No se pudo guardar: '+(e&&e.message||e))}};
+$('#newB').onclick=()=>{load(blank());setTool('sel');toast('Pizarrón nuevo')};
+$('#preset').onchange=e=>{const v=e.target.value;if(v!==''){load(PRESETS[+v]());toast('Plantilla cargada')}e.target.value=''};
+$('#lib').onclick=e=>{
+ const o=e.target.closest('[data-open]'),r=e.target.closest('[data-rm]');
+ if(o){const d=lib().find(x=>x.id===o.dataset.open);if(d){load(d);toast('Abierto: '+(d.title||'Sin nombre'))}}
+ if(r){if(r.dataset.sure){removeOne(r.dataset.rm).then(renderLib,e=>toast('No se pudo borrar'));renderLib()}else{r.dataset.sure=1;r.textContent='¿Seguro?'}}
+};
+
+/* ---------- image & share ---------- */
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+$('#imgB').onclick=()=>{
+ const keep=sel;sel=null;renderBoard();
+ const [,,w,h]=FIELDS[doc.field],S=Math.round(1800/w);
+ const c=svg.cloneNode(true);c.setAttribute('width',w*S);c.setAttribute('height',h*S);c.removeAttribute('style');
+ const str=new XMLSerializer().serializeToString(c);sel=keep;renderBoard();
+ const url=URL.createObjectURL(new Blob([str],{type:'image/svg+xml'}));const img=new Image();
+ img.onload=()=>{
+  const head=(doc.title||doc.goal)?130:0,cv=document.createElement('canvas');cv.width=w*S;cv.height=h*S+head;const x=cv.getContext('2d');
+  x.fillStyle='#0f3b22';x.fillRect(0,0,cv.width,cv.height);
+  if(head){x.fillStyle='#fff';x.font='700 54px "Barlow Condensed",sans-serif';x.fillText(doc.title||'',36,64);x.fillStyle='#f4c430';x.font='500 28px Barlow,sans-serif';
+   const sub=[doc.div,doc.dur&&doc.dur+' min',doc.goal].filter(Boolean).join('  ·  ');x.fillText(sub.length>110?sub.slice(0,108)+'…':sub,36,108)}
+  x.drawImage(img,0,head);URL.revokeObjectURL(url);lastCv=cv;
+  $('#imgOut').src=cv.toDataURL('image/png');$('#dlgImg').showModal();
+ };
+ img.onerror=()=>toast('No se pudo generar la imagen');img.src=url;
+};
+$('#copyImg').onclick=()=>{if(!lastCv)return;lastCv.toBlob(async b=>{try{await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);toast('Imagen copiada')}catch(e){toast('Usá clic derecho → Copiar imagen')}})};
+$('#shareB').onclick=()=>{const d=clone(doc);delete d.saved;$('#shareOut').value=JSON.stringify(d);$('#shareIn').value='';$('#dlgShare').showModal()};
+$('#copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('#shareOut').value);toast('Código copiado')}catch(e){$('#shareOut').select();toast('Seleccionado: copialo con Ctrl+C')}};
+$('#importB').onclick=()=>{
+ try{const o=JSON.parse($('#shareIn').value);if(!Array.isArray(o.frames)||!o.frames.length||!FIELDS[o.field])throw 0;
+  o.frames=o.frames.map(fr=>fr.filter(i=>NAMES[i.t]&&isFinite(i.x)&&isFinite(i.y)));
+  load({...o,id:uid()});$('#dlgShare').close();toast('Ejercicio importado')}
+ catch(e){toast('El código no es válido')}
+};
+
+/* ---------- start ---------- */
+let start=null;try{start=JSON.parse(localStorage.getItem(DR))}catch(e){}
+load(start&&Array.isArray(start.frames)&&start.frames.length&&FIELDS[start.field]?start:PRESETS[0]());
+setTool('sel');renderLib();fillBanco();
+if(HOST){$('#libNote').textContent='Se guardan en tu planilla de Google (pestaña PIZARRA_EJERCICIOS), así los ves desde cualquier dispositivo.';}
+addEventListener('resize',()=>renderBoard());
+window.PZ={
+ refresh(){renderLib();fillBanco();},
+ open(id){const d=lib().find(x=>x.id===id);if(d){load(d);renderLib();toast('Abierto: '+(d.title||'Sin nombre'))}},
+ newFor(drill,extra){const d={...blank(),title:drill||'',drill:drill||'',...(extra||{})};load(d);renderLib();setTimeout(()=>$('#fTitle').focus(),50);toast('Ejercicio nuevo para «'+(drill||'')+'»')}
+};
+if(HOST&&HOST.ready)HOST.ready();
+if(HOST&&window.ResizeObserver){new ResizeObserver(()=>HOST.resize(document.documentElement.scrollHeight)).observe(document.body);}
+}
+</script>
+</body>
+</html>
